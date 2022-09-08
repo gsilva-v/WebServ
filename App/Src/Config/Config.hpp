@@ -1,3 +1,6 @@
+#ifndef __CONFIG_H__
+#define __CONFIG_H__
+
 #pragma once
 #include <iostream>
 #include "config_fields.hpp"
@@ -18,18 +21,20 @@ class Config{
 		~Config();
 
 		// Parsing
-		void parseFile(const std::string &_file);
+		void	parseFile(const std::string &_file);
 		void	parseConfig(stringVector &content);
-		static boost::string format_line(boost::string& line, int& line_num);
-		bool isInServerScope(boost::string line);
-		void fillConfigVector (stringVector::iterator begin, stringVector::iterator end);
-		void fillServerFields(stringVector block, server_info& serv_info);
-		void fillLocationsFields(stringVector block, location& loc_info);
+		static	boost::string format_line(boost::string& line, int& line_num);
+		bool	isInServerScope(boost::string line);
+		void	fillConfigVector (stringVector::iterator begin, stringVector::iterator end);
+		void	fillServerFields(stringVector block, server_info& serv_info);
+		void	fillLocationsFields(stringVector block, location& loc_info);
 
 		// Accessors
-		std::vector<server_info> getServersConfig() const;
-
-
+		std::vector<server_info>	getServersConfig() const;
+		server_info					getServerByIndex(const int & index);
+		int							getServerSize();
 
 
 };
+
+#endif // __CONFIG_H__

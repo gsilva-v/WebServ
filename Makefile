@@ -13,7 +13,7 @@ PATH_CONF = $(PATH_SRCS)Config/
 # PATH_REQ = $(PATH_SRCS)Request/
 # PATH_RES = $(PATH_SRCS)Response/
 # PATH_SERV = $(PATH_SRCS)Server/
-# PATH_SOCK = $(PATH_SRCS)Socket/
+PATH_SOCK = $(PATH_SRCS)Socket/
 
 PATH_OBJS = ./Objs/
 
@@ -25,12 +25,14 @@ PATH_OBJS = ./Objs/
 # 		$(PATH_REQ)Request.cpp \
 # 		$(PATH_RES)Response.cpp \
 # 		$(PATH_SERV)Server.cpp \
-# 		$(PATH_SOCK)Socket.cpp \
+#		$(PATH_SOCK)Socket.cpp \
 # 		$(PATH_SRCS)main.cpp
 	
 SRCS =	$(PATH_SRCS)main.cpp \
 		$(PATH_CONF)Config.cpp \
-		$(PATH_BOOST)String.cpp
+		$(PATH_BOOST)String.cpp \
+		$(PATH_SOCK)Socket.cpp 
+
 
 OBJS += $(patsubst $(PATH_SRCS)%.cpp, $(PATH_OBJS)%.o, $(SRCS))
 
@@ -49,7 +51,7 @@ $(PATH_OBJS)%.o: $(PATH_SRCS)%.cpp
 # @mkdir -p $(PATH_OBJS)Request/
 # @mkdir -p $(PATH_OBJS)Response/
 # @mkdir -p $(PATH_OBJS)Server/
-# @mkdir -p $(PATH_OBJS)Socket/
+	@mkdir -p $(PATH_OBJS)Socket/
 	$(CC) $(CXXFLAGS) -c $< -o $@
 
 clean:		

@@ -259,4 +259,12 @@ void Config::fillServerFields(stringVector block, server_info& serv_info){
 
 std::vector<server_info> Config::getServersConfig()const{
 	return servers_config;
-}
+};
+
+server_info Config::getServerByIndex(const int & index){
+	return servers_config.at(index);
+};
+
+int Config::getServerSize(){
+	return servers_config.size();
+};

@@ -3,6 +3,7 @@
 
 // My Classes Include
 #include "../Src/Config/Config.hpp"
+#include "../Src/Socket/Socket.hpp"
 
 // Standard Include
 #include <iostream>
