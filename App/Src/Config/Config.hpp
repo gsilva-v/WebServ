@@ -1,7 +1,6 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
-#pragma once
 #include <iostream>
 #include "config_fields.hpp"
 #include <fstream>

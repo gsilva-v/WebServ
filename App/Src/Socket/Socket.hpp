@@ -33,8 +33,6 @@ class Socket{
 		server_info getServInfo() const ;
 		sockaddr_in &getAddr();
 		boost::string getHostName();
-
-
 };
 typedef std::vector<Socket> SocketVector; 
 

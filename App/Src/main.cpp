@@ -1,5 +1,5 @@
 #include "WebServ.hpp"
-
+#include "Server/Server.hpp"
 bool dupBind(SocketVector &sockVec, int size, const server_info & info){
 	if (size == 0)
 		return false;
@@ -9,8 +9,6 @@ bool dupBind(SocketVector &sockVec, int size, const server_info & info){
 	}
 	return false;
 }
-
-
 
 int main(int argc, char **argv){
 	std::string conf_file = "./Config/default.conf";
@@ -27,6 +25,7 @@ int main(int argc, char **argv){
 			Socket socket(serv_info, canBind);
 			sockVec.push_back(socket);
 		}
+		Server server(sockVec);
 	
 	} catch(const std::exception& e) {
 		std::cerr << e.what() << '\n';

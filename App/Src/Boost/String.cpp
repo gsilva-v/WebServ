@@ -2,8 +2,6 @@
 #include <iostream>
 namespace boost {
 
-
-
 	boost::string& string::trim_left(const char* delimiters){
 		this->erase(0, this->find_first_not_of(delimiters));
 		return *this;
@@ -46,9 +44,7 @@ namespace boost {
 	};
 
 	string::string(std::string buf){
-		std::stringstream str;
-		str << buf;
-		*this = buf;
+		this->assign(buf);
 	}
 	
 	string::string(const char * s){
@@ -56,7 +52,12 @@ namespace boost {
 		str << s;
 		str >> *this;
 	}
-	
+
+	bool string::ends_with(const char c){
+		if (this->size() == 0 )
+			return false;
+		return this->at(this->size() - 1) == c ? true : false;
+	};
 	
 
 }

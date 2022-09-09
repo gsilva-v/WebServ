@@ -44,7 +44,10 @@ Socket::Socket(server_info &_serv_info, bool &_canBind)
 
 Socket & Socket::operator=(Socket const &rhs){
 	if(this != &rhs){
-		
+		fd = rhs.fd;
+		addr = rhs.addr;
+		canBind = rhs.canBind;
+		serv_info = rhs.serv_info;
 	}
 	return *this;
 };
