@@ -31,7 +31,12 @@ Response::Response(Request * req, Server *serv)
 	}
 	setConfig();
 
+	std::cout << "O que foi pedido: " << request->getUrl() << std::endl;
+	
 	path = lookForRoot(conf.locations);
+
+	std::cout << "path que sera aberto: " << path << std::endl;
+	
 	boost::string method = req->getMethod();
 	if (method.find("GET") != npos)
 		responseGet();
@@ -101,8 +106,8 @@ void Response::setConfig(){
 		return ;
 	int port = atoi(hostVec[1].c_str());
 	
-	for (size_t i = 0; i < server->getSockVec().size(); i++){
-		server_info tmp = server->getSockVec().at(i).getServInfo();
+	for (size_t i = 0; i < server->sockVec.size(); i++){
+		server_info tmp = server->sockVec.at(i).getServInfo();
 		if ((hostVec[0] == tmp.host || hostVec[0] == "localhost") && port == tmp.listen_port){
 			conf = tmp;
 			break ;
@@ -111,9 +116,9 @@ void Response::setConfig(){
 	if (lookForRoot(conf.locations) == ""){
 		int i = findSocket();
 		if(i >= 0){
-			locationVector tmp_locations = server->getSockVec().at(i).getServInfo().locations;
+			locationVector tmp_locations = server->sockVec.at(i).getServInfo().locations;
 			if (lookForRoot(tmp_locations) != ""){
-				conf = server->getSockVec().at(i).getServInfo();
+				conf = server->sockVec.at(i).getServInfo();
 			} else
 				status_code = "404";
 		}
@@ -131,7 +136,7 @@ boost::string Response::lookForRoot(locationVector& location){
 	boost::string path = "";
 	stringVector urlVec = request->getUrl().split("/");
 	for (size_t i = 0; i < location.size() && path == ""; i++){
-		if (!urlVec.empty() & location.at(i).name == "/" + urlVec[0]){
+		if (!urlVec.empty() && location.at(i).name == "/" + urlVec[0]){
 			path = setPath(location, urlVec, i, false);
 		}
 		if (location.at(i).name == "/"){
@@ -141,6 +146,7 @@ boost::string Response::lookForRoot(locationVector& location){
 			break ;
 		if (!validFolderFile(path))
 			path = "";
+
 	}
 	return path;
 }
@@ -157,13 +163,23 @@ boost::string Response::lookForRoot(locationVector& location){
  */
 boost::string Response::setPath(locationVector &location, stringVector &urlVec, size_t i, bool var){
 	boost::string path = location.at(i).root;
-	if (var && location.at(i).index != "" && request->getUrl() == "/")
-		path.append("/" + location.at(i).index);
-	if (!var && location.at(i).index != "")
-		path.append("/" + location.at(i).index);
+
+	if (var && location.at(i).index != "" && request->getUrl() == "/"){
+		if (!path.ends_with('/'))
+			path.append("/");
+		path.append(location.at(i).index);
+	}
+	else if (!var && location.at(i).index != ""){
+		if (!path.ends_with('/'))
+			path.append("/");
+		path.append(location.at(i).index);
+	} 
 	else {
-		for(size_t y = 0; y < urlVec.size(); y++)
-			path.append("/" + urlVec.at(y));
+		for(size_t y = 0; y < urlVec.size(); y++){
+			if (!path.ends_with('/'))
+				path.append("/");
+			path.append(urlVec.at(y));
+		}
 	}
 	autoindex = location.at(i).autoindex;
 	redirection = location.at(i).redirect;
@@ -300,10 +316,12 @@ void Response::errorBody(boost::string & code){
 	boost::string error_path;
 
 	if (conf.error_pages.empty()){
-		if ((i = findSocket()))
-			error_path = server->getSockVec().at(i).getServInfo().error_pages.at(code);
+		if ((i = findSocket())){
+			error_path = server->sockVec.at(i).getServInfo().error_pages.at(code);
+		}
+
 	} else 
-		error_path = conf.error_pages.at(0);
+		error_path = conf.error_pages.at(code);
 
 	if (request->getUrl().find("/image") != npos || request->getUrl().find("favicon.ico") != npos){
 		makeImage();
@@ -325,9 +343,9 @@ void Response::errorBody(boost::string & code){
  * @return The index of the socket in the vector of sockets.
  */
 int Response::findSocket(){
-	for (size_t i = 0; i< server->getSockVec().size() ; i++){
-		if (conf.listen_port == server->getSockVec().at(i).getServInfo().listen_port && \
-		conf.server_name == server->getSockVec().at(i).getServInfo().server_name)
+	for (size_t i = 0; i< server->sockVec.size() ; i++){
+		if (conf.listen_port == server->sockVec.at(i).getServInfo().listen_port && \
+			conf.server_name == server->sockVec.at(i).getServInfo().server_name)
 			return i;
 	}
 	return -1;
@@ -488,6 +506,7 @@ void Response::handleCgi(){
 void Response::readHTML(boost::string path){
 	boost::string line;
 	std::fstream file;
+	std::cout << "path : " << path << std::endl;
 	file.open(path.c_str(), std::ios::in);
 	if (!file.good()){
 		status_code = "404";

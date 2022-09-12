@@ -19,7 +19,8 @@ Request::Request(boost::string &request, char *buf)
 : cgiRequest(false), isCgiUpload(false){
 	memcpy(buffer, buf, sizeof(buffer));
 	stringVector content = request.split("\r\n");
-	
+	// std::cout << request << std::endl;
+
 	if (content.empty()){
 		throw std::runtime_error("Empty Request");
 	}
@@ -199,22 +200,6 @@ void Request::cgiEnvGet(stringVector::iterator &begin){
 	scriptName = tmp[1].erase(tmp[1].find("?"), tmp[1].length());
 	scriptType = findScriptType(*begin);
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // Accessors
 boost::string Request::getScriptType() const {

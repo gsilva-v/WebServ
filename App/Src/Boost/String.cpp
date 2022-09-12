@@ -1,5 +1,8 @@
 #include "String.hpp"
 #include <iostream>
+	#include <cstdlib>
+	#include <stdio.h>
+
 namespace boost {
 
 	boost::string& string::trim_left(const char* delimiters){
@@ -30,8 +33,7 @@ namespace boost {
 				i = this->length();
 			std::string helper = this->substr(j, i - j);
 			if (!helper.empty()){
-				string delim(helper.c_str());
-				res.push_back(delim);
+				res.push_back(helper);
 			}
 			j = i + 1;
 		}

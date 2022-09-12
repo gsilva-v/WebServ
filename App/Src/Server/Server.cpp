@@ -11,13 +11,24 @@ Server::~Server(){};
 
 Server & Server::operator=(Server const &rhs){
 	if(this != &rhs){
-		
+		client_fd = rhs.client_fd;
+		client_addr = rhs.client_addr;
+		sender_fd = rhs.sender_fd;
+		bytes = rhs.bytes;
+		sockVec = rhs.sockVec;
+		isChunked = rhs.isChunked;
+		tooLarge = rhs.tooLarge;
+		pfds = rhs.pfds;
+		status_code = rhs.status_code;
+		receive_buffer = rhs.receive_buffer;
+		bin_boundary = rhs.bin_boundary;
+		upload_path = rhs.upload_path;
 	}
 	return *this;
 };
 
-Server::Server(SocketVector sockVec)
-:client_fd(0), status_code("200"), sockVec(sockVec), isChunked(false), tooLarge(false){
+Server::Server(SocketVector _sockVec)
+:client_fd(0), status_code("200"), sockVec(_sockVec), isChunked(false), tooLarge(false){
 	for (size_t i = 0 ; i < sockVec.size(); i++){
 		pollfd new_fd = addToPollfd(sockVec.at(i).getFd());
 		pfds.push_back(new_fd);
@@ -26,9 +37,9 @@ Server::Server(SocketVector sockVec)
 	run();
 };
 
-pollfd Server::addToPollfd(int new_fd){
+pollfd Server::addToPollfd(int newfd){
 	pollfd new_pfd;
-	new_pfd.fd = new_fd;
+	new_pfd.fd = newfd;
 	new_pfd.events = POLLIN;
 	new_pfd.revents = 0;
 	return new_pfd;
@@ -46,7 +57,7 @@ void Server::run(){
 		if (status_code == "500")
 			std::cout << "Internal server Error [500]" << std::endl;
 		for (std::vector<pollfd>::iterator it = pfds.begin(); it != pfds.end(); it++ ){
-			if (it->revents == POLLIN){
+			if (it->revents & POLLIN){
 				for (size_t i = 0; i < pfds.size(); i++){
 					if (it->fd == pfds.at(i).fd && it->fd != client_fd && i < sockVec.size()){
 						handleEvents(it, i);
@@ -63,24 +74,31 @@ void Server::run(){
 };
 
 
-void Server::handleEvents(std::vector<pollfd>::iterator it, size_t index){
+void Server::handleEvents(std::vector<pollfd>::iterator &it, size_t index){
 	socklen_t addrlen = sizeof(client_addr);
 	client_fd = accept(pfds[index].fd, (struct sockaddr*)&client_addr, &addrlen);
-	if (client_fd == -1){
-		return ;
+	switch (client_fd) {
+		case -1: {
+			std::cout << "could't accept connection" << std::endl;
+			break;
+		}
+		default: {
+
+			pfds.push_back(addToPollfd(client_fd));
+			it = pfds.begin();
+
+			while (it->fd != pfds[index].fd)
+				it++;
+		}
 	}
-	pfds.push_back(addToPollfd(client_fd));
-	it = pfds.begin();
-	while (it->fd  != pfds[index].fd)
-		it++;
 };
 
-void Server::handleClient(std::vector<pollfd>::iterator it){
+void Server::handleClient(std::vector<pollfd>::iterator &it){
 	sender_fd = it->fd;
 
-	char buffer[3000];
+	char buffer[4096];
 	bzero(buffer, sizeof(buffer));
-	bytes = recv(it->fd, buffer, 3000, 0);
+	bytes = recv(it->fd, buffer, 4096, 0);
 
 	if (bytes  <= 0){
 		closeSocket(it);
@@ -90,7 +108,7 @@ void Server::handleClient(std::vector<pollfd>::iterator it){
 		
 		if (tooLarge){
 			receive_buffer = "";
-			if (bytes != 3000)
+			if (bytes != 4096)
 				tooLarge = false;
 			return ;
 		}
@@ -110,8 +128,8 @@ void Server::closeSocket(std::vector<pollfd>::iterator &it){
 	status_code = "200";
 };
 
-void Server::sendResponse(boost::string &received, int sender_fd, char *buffer){
-	Request req(received, buffer);
+void Server::sendResponse(boost::string &received, int sender_fd, char *buf){
+	Request req(received, buf);
 	Response resp(&req, this);
 
 	if (isChunked == false){
@@ -124,6 +142,8 @@ void Server::sendResponse(boost::string &received, int sender_fd, char *buffer){
 		memcpy(buffer, header.data(), header.length());
 		memcpy(buffer + header.length(), body.data(), body.length());
 		
+		std::cout << "body: " << body.data() << std::endl;
+
 		if (send(sender_fd, buffer, max_send, 0) == -1)
 			std::cout << "error sending response" << std::endl;
 		delete[] buffer;

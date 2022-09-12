@@ -12,9 +12,7 @@ bool dupBind(SocketVector &sockVec, int size, const server_info & info){
 
 int main(int argc, char **argv){
 	std::string conf_file = "./Config/default.conf";
-
-	try	{
-		Config conf(conf_file);
+	Config conf(conf_file);
 		SocketVector sockVec;
 
 		for (int i = 0; i < conf.getServerSize(); i++){
@@ -26,10 +24,23 @@ int main(int argc, char **argv){
 			sockVec.push_back(socket);
 		}
 		Server server(sockVec);
+	// try	{
+	// 	Config conf(conf_file);
+	// 	SocketVector sockVec;
+
+	// 	for (int i = 0; i < conf.getServerSize(); i++){
+	// 		bool canBind = true;
+	// 		server_info serv_info = conf.getServerByIndex(i);
+	// 		if (dupBind(sockVec, sockVec.size(), serv_info))
+	// 			canBind = false;
+	// 		Socket socket(serv_info, canBind);
+	// 		sockVec.push_back(socket);
+	// 	}
+	// 	Server server(sockVec);
 	
-	} catch(const std::exception& e) {
-		std::cerr << e.what() << '\n';
-	}
+	// } catch(const std::exception& e) {
+	// 	std::cerr << e.what() << '\n';
+	// }
 
 
 

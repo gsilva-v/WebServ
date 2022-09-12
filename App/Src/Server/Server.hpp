@@ -15,7 +15,8 @@
 #include "../Request/Request.hpp"
 
 class Server{
-	private:
+	protected:
+		friend class Response;
 		int client_fd;
 		sockaddr_storage client_addr;
 		int sender_fd;
@@ -35,12 +36,12 @@ class Server{
 		Server & operator=(Server const &rhs);
 		~Server();
 
-		pollfd addToPollfd(int new_fd);
+		pollfd addToPollfd(int newfd);
 		void run();
-		void handleEvents(std::vector<pollfd>::iterator it, size_t index);
-		void handleClient(std::vector<pollfd>::iterator it);
+		void handleEvents(std::vector<pollfd>::iterator &it, size_t index);
+		void handleClient(std::vector<pollfd>::iterator &it);
 		void closeSocket(std::vector<pollfd>::iterator &it);
-		void sendResponse(boost::string &received, int sender_fd, char *buffer);
+		void sendResponse(boost::string &received, int sender_fd, char *buf);
 
 		boost::string statusCode() const { return status_code; }
 		bool getIsChunked() const { return isChunked; }
