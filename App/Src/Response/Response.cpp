@@ -30,18 +30,10 @@ Response::Response(Request * req, Server *serv)
 		return ;
 	}
 	setConfig();
-
-	std::cout << "O que foi pedido: " << request->getUrl() << std::endl;
-	
 	path = lookForRoot(conf.locations);
-
-	std::cout << "path que sera aberto: " << path << std::endl;
-	
-	// std::cout << autoindex << std::endl;
 	boost::string method = req->getMethod();
-	if (method.find("GET") != npos){
+	if (method.find("GET") != npos)
 		responseGet();
-	}
 	else if (method.find("POST") != npos)
 		responsePost();
 	else if (method.find("DELETE") != npos)
@@ -50,19 +42,18 @@ Response::Response(Request * req, Server *serv)
 // COlocar mensgem de erro
 		return ;
 	}
+	// std::cout << "Response" << std::endl;
+	// std::cout << header << std::endl;	
+	// std::cout << body.str() << std::endl;	
 };
 
-/**
- * It handles the multipart/form-data request
- * 
- * @return the number of bytes written to the file.
- */
 void Response::responseMultipart(){
 	boost::string boundary("");
 	size_t start = 0, pos = 0;
 
 	boundary = request->getContentType();
 	// colocar um print pra descobrir o pq disso
+	std::cout << "oq é esse boundary :" << boundary << std::endl;
 	size_t n = boundary.find("--");
 	boundary.erase(0, n);
 	boundary.insert(0, "--");
@@ -82,13 +73,12 @@ void Response::responseMultipart(){
 		if (!folderExist(path)){
 			handleFile();
 		}
-		if (server->getBytes() == 3000)
+		if (server->getBytes() == 4096)
 			server->setIsChunked(true);
 	}
 	pos = findBodyEnd(start, server->getBinBoundary());
-
 	writeToFile(start, pos);
-	if (server->getBytes() != 3000){
+	if (server->getBytes() != 4096){
 		makeAutoindex("./resources/upload/");
 		makeHeader(status_code);
 		server->setIsChunked(false);
@@ -241,7 +231,7 @@ void Response::makeHeader(boost::string code){
 	if (code != "200" && code != "301"){
 		errorBody(code);
 	}
-	stream_header << "HTTP/1.1 " << it->first << it->second << "\r\nContent-Length: " << bodySize;
+	stream_header << "HTTP/1.1 " << it->first << " " << it->second << "\r\nContent-Length: " << bodySize;
 	if (code == "301")
 		stream_header << "\r\nLocation: " + path;
 	stream_header << "\r\n\r\n";
@@ -255,9 +245,7 @@ void Response::makeHeader(boost::string code){
  */
 void Response::makeImage(){
 	locationVector location = conf.locations;
-	std::cout << "location makeimage: " << path << std::endl;
 	ImgInfo img = getImageBinary(path.c_str());
-
 	body.clear();
 	body.write(img.first, img.second);
 	bodySize = img.second;
@@ -287,8 +275,8 @@ void Response::makeAutoindex(boost::string path){
 	value.assign("<html>\n<head>\n<meta charset=\"utf-8\">\n\
 				<title>Directory Listing</title>\n</head>\n<body>\n<h1>" + path + \
 				"</h1>\n<ul>");
-	size_t n = path.find("/upload");
-	path.erase(0, n);
+	// size_t n = path.find("/upload");
+	path.clear();
 
 	while ((dire = readdir(dir))){
 		value.append("<li><a href=\"");
@@ -325,14 +313,10 @@ void Response::errorBody(boost::string &code){
 		if ((i = findSocket())){
 			error_path = server->sockVec.at(i).getServInfo().error_pages.at(code);
 		}
-
 	} else 
 		error_path = conf.error_pages.at(code);
-	
-
 	if (request->getUrl().find("/image") != npos || request->getUrl().find("favicon.ico") != npos){
-		std::cout << "request favicon.ico" << request->getUrl() << std::endl;
-		path = request->getUrl();
+		path = conf.root + request->getUrl();
 		makeImage();
 	} else {
 		body.clear();
@@ -435,7 +419,7 @@ void Response::writeToFile(size_t start , size_t end){
 		std::cout << "Error in file path out" << std::endl;	
 	const char * addr = &request->buffer[start];
 	size_t len = 0;
-	if (server->getBytes() != 3000)
+	if (server->getBytes() != 4096)
 		len = end - 5 - start;
 	else 
 		len = end - start;
@@ -488,7 +472,6 @@ bool Response::fileExist(boost::string path){
 void Response::responseGet(){
 	body.clear();
 
-	std::cout << "redirecionamento: " <<redirection << std::endl;
 	if (request->getCgiRequest()){
 		handleCgi();
 		return ;
@@ -516,10 +499,10 @@ void Response::handleCgi(){
 void Response::readHTML(boost::string path){
 	boost::string line;
 	std::fstream file;
-	std::cout << "path : " << path << std::endl;
 	file.open(path.c_str(), std::ios::in);
 	if (!file.good()){
 		status_code = "404";
+
 		return ;
 	}
 	status_code = "200";
@@ -554,6 +537,13 @@ void Response::deletePath(boost::string path){
 	boost::string line;
 
 	if (!dir){
+		
+		if (fileExist(path)){
+			unlink(path.c_str());
+			return ;
+		}
+
+
 		status_code = "404";
 		std::cout << "delete error" << std::endl;
 		return ;

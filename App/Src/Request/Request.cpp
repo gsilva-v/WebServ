@@ -19,12 +19,14 @@ Request::Request(boost::string &request, char *buf)
 : cgiRequest(false), isCgiUpload(false){
 	memcpy(buffer, buf, sizeof(buffer));
 	stringVector content = request.split("\r\n");
-	// std::cout << request << std::endl;
+	std::cout << "Request" << std::endl;
+	std::cout << request << std::endl;
 
 	if (content.empty()){
 		throw std::runtime_error("Empty Request");
 	}
 	RequestInfo(content);
+
 };
 
 Request & Request::operator=(Request const &rhs){
