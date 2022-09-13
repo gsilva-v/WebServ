@@ -4,6 +4,7 @@
 
 #include "../Server/Server.hpp"
 #include "../StatusCode/StatusCode.hpp"
+#include "../CGI/CGI.hpp"
 #include "../Request/Request.hpp"
 #include <fstream>
 #include <iostream>

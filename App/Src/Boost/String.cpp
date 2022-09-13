@@ -41,6 +41,7 @@ namespace boost {
 	}
 	
 	string::string(){};
+	
 	string::string(std::stringstream buf){
 		buf >> *this;
 	};
@@ -54,6 +55,15 @@ namespace boost {
 		str << s;
 		str >> *this;
 	}
+	
+	template<typename T>
+	boost::string string::itoa(const T& num){
+		std::stringstream buf;
+		buf << num;
+		boost::string ret;
+		buf >> ret;
+		return ret;	
+	};
 
 	bool string::ends_with(const char c){
 		if (this->size() == 0 )

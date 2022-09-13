@@ -493,7 +493,12 @@ void Response::responseGet(){
 };
 
 void Response::handleCgi(){
-
+	CGI cgi(request, conf);
+	body.clear();
+	bodySize = cgi.getOutput().length();
+	body << cgi.getOutput();
+	status_code = "200";
+	makeHeader(status_code);
 };
 
 void Response::readHTML(boost::string path){
