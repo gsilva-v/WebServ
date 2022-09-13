@@ -187,13 +187,13 @@ void Config::fillLocationsFields(stringVector block, location& loc_info){
 		loc_info.name = name;
 	} else if (block[0].find("root") != std::string::npos){
 		loc_info.root = block[1].trim_right(";");
+	} else if (block[0].find("autoindex") != std::string::npos){
+		if (block[1].find("on") != std::string::npos)
+			loc_info.autoindex = true;
 	} else if (block[0].find("index") != std::string::npos){
 		loc_info.index = block[1].trim_right(";");
 	} else if (block[0].find("cgi_ext") != std::string::npos){
 		loc_info.cgi_ext[block[1]] = block[2].trim_right(";");
-	} else if (block[0].find("autoindex") != std::string::npos){
-		if (block[1].find("on") != std::string::npos)
-			loc_info.autoindex = true;
 	} else if (block[0].find("upload_dir") != std::string::npos){
 		loc_info.upload_dir = block[1].trim_right(";");
 	} else if (block[0].find("upload_max_size") != std::string::npos){
@@ -207,8 +207,10 @@ void Config::fillLocationsFields(stringVector block, location& loc_info){
 			loc_info.allowed_methods.push_back(*it);
 		}
 	} else if (block[0].find("return") != std::string::npos){
-		if (block[1].find("301") != std::string::npos)
+		if (block[1].find("301") != std::string::npos){
 			loc_info.redirect = true;
+			loc_info.redirect_path = block[2].trim_right(";");
+		}
 	} else {
 		throw std::runtime_error("Parse error: Unrecognized Server Field `" + block[0] + "`");
 	}

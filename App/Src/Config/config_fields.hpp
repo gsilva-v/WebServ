@@ -19,6 +19,7 @@ typedef struct loc_info{
 	boost::string upload_dir;
 	int upload_max_size;
 	bool redirect;
+	boost::string redirect_path;
 	bool upload;
 	bool autoindex;
 }	location;

@@ -141,8 +141,6 @@ void Server::sendResponse(boost::string &received, int sender_fd, char *buf){
 		bzero(buffer, max_send);
 		memcpy(buffer, header.data(), header.length());
 		memcpy(buffer + header.length(), body.data(), body.length());
-		
-		std::cout << "body: " << body.data() << std::endl;
 
 		if (send(sender_fd, buffer, max_send, 0) == -1)
 			std::cout << "error sending response" << std::endl;

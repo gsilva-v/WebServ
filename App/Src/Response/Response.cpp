@@ -37,9 +37,11 @@ Response::Response(Request * req, Server *serv)
 
 	std::cout << "path que sera aberto: " << path << std::endl;
 	
+	// std::cout << autoindex << std::endl;
 	boost::string method = req->getMethod();
-	if (method.find("GET") != npos)
+	if (method.find("GET") != npos){
 		responseGet();
+	}
 	else if (method.find("POST") != npos)
 		responsePost();
 	else if (method.find("DELETE") != npos)
@@ -142,11 +144,14 @@ boost::string Response::lookForRoot(locationVector& location){
 		if (location.at(i).name == "/"){
 			path = setPath(location, urlVec, i, true);
 		}
-		if (path == "/redirection")
+		if (request->getUrl() == location.at(i).name && location.at(i).redirect){
+			std::cout << location.at(i).redirect_path << std::endl;
+			path = location.at(i).redirect_path;
 			break ;
-		if (!validFolderFile(path))
+		}
+		if (!validFolderFile(path)){
 			path = "";
-
+		}
 	}
 	return path;
 }
@@ -169,7 +174,7 @@ boost::string Response::setPath(locationVector &location, stringVector &urlVec, 
 			path.append("/");
 		path.append(location.at(i).index);
 	}
-	else if (!var && location.at(i).index != ""){
+	if (!var && location.at(i).index != ""){
 		if (!path.ends_with('/'))
 			path.append("/");
 		path.append(location.at(i).index);
@@ -238,8 +243,8 @@ void Response::makeHeader(boost::string code){
 	}
 	stream_header << "HTTP/1.1 " << it->first << it->second << "\r\nContent-Length: " << bodySize;
 	if (code == "301")
-		stream_header << "\r\nLocation: http://127.0.0.1:4242";
-	stream_header << "\r\nSet-Cookie:UserID = XYZ\r\n\r\n";
+		stream_header << "\r\nLocation: " + path;
+	stream_header << "\r\n\r\n";
 	headerSize = stream_header.str().length();
 	header = stream_header.str();
 };
@@ -250,6 +255,7 @@ void Response::makeHeader(boost::string code){
  */
 void Response::makeImage(){
 	locationVector location = conf.locations;
+	std::cout << "location makeimage: " << path << std::endl;
 	ImgInfo img = getImageBinary(path.c_str());
 
 	body.clear();
@@ -309,7 +315,7 @@ void Response::makeAutoindex(boost::string path){
  * 
  * @param code the error code
  */
-void Response::errorBody(boost::string & code){
+void Response::errorBody(boost::string &code){
 	boost::string line;
 	std::fstream file;
 	int i = 0;
@@ -322,8 +328,11 @@ void Response::errorBody(boost::string & code){
 
 	} else 
 		error_path = conf.error_pages.at(code);
+	
 
 	if (request->getUrl().find("/image") != npos || request->getUrl().find("favicon.ico") != npos){
+		std::cout << "request favicon.ico" << request->getUrl() << std::endl;
+		path = request->getUrl();
 		makeImage();
 	} else {
 		body.clear();
@@ -352,7 +361,7 @@ int Response::findSocket(){
 };
 
 /**
- * It reads a file into a char array
+ * It reads a file into a char array and returns the array and the size of the file
  * 
  * @param path The path to the image file.
  * 
@@ -360,7 +369,7 @@ int Response::findSocket(){
  */
 Response::ImgInfo Response::getImageBinary(const char *path){
 	ImgInfo imgInfo;
-	std::ifstream f(path, std::ios::in| std::ios::binary | std::ios::ate);
+	std::ifstream f(path, std::ios::in | std::ios::binary | std::ios::ate);
 
 	if (!f.is_open()){
 		status_code = "400";
@@ -478,17 +487,18 @@ bool Response::fileExist(boost::string path){
 
 void Response::responseGet(){
 	body.clear();
+
+	std::cout << "redirecionamento: " <<redirection << std::endl;
 	if (request->getCgiRequest()){
 		handleCgi();
 		return ;
 	}
 	if ((!folderExist(path) && request->getUrl().find("/upload") != npos) || \
 		request->getUrl().find("/image") != npos || \
-		request->getUrl().find("favicon.ico") != npos)
-		makeImage();
-	else if (request->getUrl().find("/420") != npos)
-		status_code = "420";
-	else if (autoindex)
+		request->getUrl().find("favicon.ico") != npos){
+			path = conf.root + request->getUrl();
+			makeImage();
+	} else if (autoindex)
 		makeAutoindex(path);
 	else if (redirection)
 		status_code = "301";
