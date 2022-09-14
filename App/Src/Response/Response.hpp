@@ -23,6 +23,7 @@ class Response{
 		size_t bodySize;
 		Request *request;
 		boost::string path;
+		boost::string upload_dir;
 		boost::string header;
 		boost::string status_code;
 		Server *server;

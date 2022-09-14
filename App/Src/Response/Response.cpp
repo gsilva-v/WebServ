@@ -53,9 +53,27 @@ void Response::responseMultipart(){
 	boost::string boundary("");
 	size_t start = 0, pos = 0;
 
+	boost::string host = request->getHost();
+	for (size_t i = 0; i < server->sockVec.size(); i++) {
+		std::vector<boost::string> vec = host.split(":");
+		if (vec.empty())
+			break;
+		int port = atoi(vec[1].c_str());
+
+		if (host == server->sockVec.at(i).getHostName() || \
+			(host.find("localhost") != npos && \
+			server->sockVec.at(i).getHostName().find("127.0.0.1") != npos && \
+			port == server->sockVec.at(i).getServInfo().listen_port)){
+				for (size_t j = 0; j < server->sockVec.at(i).getServInfo().locations.size(); j++){
+					if (request->getUrl() == server->sockVec.at(i).getServInfo().locations.at(j).name){
+						upload_dir = server->sockVec.at(i).getServInfo().locations.at(j).upload_dir;
+						break;
+					}
+				}
+				break ;
+			}
+		}
 	boundary = request->getContentType();
-	// colocar um print pra descobrir o pq disso
-	std::cout << "oq é esse boundary :" << boundary << std::endl;
 	size_t n = boundary.find("--");
 	boundary.erase(0, n);
 	boundary.insert(0, "--");
@@ -81,7 +99,7 @@ void Response::responseMultipart(){
 	pos = findBodyEnd(start, server->getBinBoundary());
 	writeToFile(start, pos);
 	if (server->getBytes() != 4096){
-		makeAutoindex("./resources/upload/");
+		makeAutoindex("./www/upload");
 		makeHeader(status_code);
 		server->setIsChunked(false);
 	}
@@ -137,7 +155,6 @@ boost::string Response::lookForRoot(locationVector& location){
 			path = setPath(location, urlVec, i, true);
 		}
 		if (request->getUrl() == location.at(i).name && location.at(i).redirect){
-			std::cout << location.at(i).redirect_path << std::endl;
 			path = location.at(i).redirect_path;
 			break ;
 		}
@@ -160,7 +177,6 @@ boost::string Response::lookForRoot(locationVector& location){
  */
 boost::string Response::setPath(locationVector &location, stringVector &urlVec, size_t i, bool var){
 	boost::string path = location.at(i).root;
-
 	if (var && location.at(i).index != "" && request->getUrl() == "/"){
 		if (!path.ends_with('/'))
 			path.append("/");
@@ -189,9 +205,11 @@ boost::string Response::setPath(locationVector &location, stringVector &urlVec, 
 void Response::handleFile(){
 	std::ifstream infile(server->uploadPath().c_str());
 	if (infile.good()){
+		std::cout << "O arquivo já exite" << std::endl;
 		if (remove(server->uploadPath().c_str()) == -1)
-			std::cout << "nao apagou o arquivo???" << std::endl;
-		std::cout << "apagou o arquivo???" << std::endl;
+			std::cout << "nao foi possivel apagar o arquivo" << std::endl;
+		else
+			std::cout << "arquivo apagado com sucesso" << std::endl;
 	}
 };
 
@@ -200,12 +218,12 @@ void Response::handleFile(){
  */
 void Response::setFileName(){
 	size_t start = 0, pos = 0;
-	boost::string content = request->buffer;
-
-	pos = content.find("filename=\"");
+	std::stringstream hold;
+	hold << request->buffer;
+	pos = hold.str().find("filename=\"", 0);
 	if (pos != npos){
 		pos += 10;
-		start = content.find('"', pos);
+		start = hold.str().find('"', pos);
 		if (start != npos){
 			for (size_t i = 0; i < conf.locations.size(); i++){
 				if (conf.locations.at(i).upload_dir != ""){
@@ -214,12 +232,9 @@ void Response::setFileName(){
 				}
 			}
 			struct stat s;
-			if (stat(path.c_str(), &s) == 0){
-				if (s.st_mode != S_IFDIR)
-					mkdir(path.c_str(), ACCESSPERMS);
-			} else
+			if (!folderExist(path))
 				mkdir(path.c_str(), ACCESSPERMS);
-			path.append(content.substr(pos, start - pos));
+			path.append(hold.str().substr(pos, start - pos));
 			server->setUploadPath(path);
 		}
 	}
@@ -273,6 +288,7 @@ void Response::makeAutoindex(boost::string path){
 	dir = opendir(path.c_str());
 	if (!dir){
 		status_code = "404";
+		std::cout << path << std::endl;
 		std::cout << "Auto Index error" << std::endl;
 		return ;
 	}
@@ -280,9 +296,7 @@ void Response::makeAutoindex(boost::string path){
 	value.assign("<html>\n<head>\n<meta charset=\"utf-8\">\n\
 				<title>Directory Listing</title>\n</head>\n<body>\n<h1>" + path + \
 				"</h1>\n<ul>");
-	// size_t n = path.find("/upload");
 	path.clear();
-
 	while ((dire = readdir(dir))){
 		value.append("<li><a href=\"");
 		value.append(path);
@@ -316,6 +330,7 @@ void Response::errorBody(boost::string &code){
 
 	if (conf.error_pages.empty()){
 		if ((i = findSocket())){
+			std::cout << i << std::endl;
 			error_path = server->sockVec.at(i).getServInfo().error_pages.at(code);
 		}
 	} else 
@@ -341,10 +356,18 @@ void Response::errorBody(boost::string &code){
  * @return The index of the socket in the vector of sockets.
  */
 int Response::findSocket(){
-	for (size_t i = 0; i< server->sockVec.size() ; i++){
-		if (conf.listen_port == server->sockVec.at(i).getServInfo().listen_port && \
-			conf.server_name == server->sockVec.at(i).getServInfo().server_name)
-			return i;
+	for (size_t i = 0; i < server->sockVec.size() ; i++){
+		boost::string host = request->getHost();
+		std::vector<boost::string> vec = host.split(":");
+		if (vec.empty())
+			return vec.size(); 
+		int port = atoi(host.split(":")[1].c_str());
+		if (host == server->sockVec.at(i).getHostName() || \
+			(host.find("localhost") != npos && \
+			server->sockVec.at(i).getHostName().find("127.0.0.1") != npos && \
+			port == server->sockVec.at(i).getServInfo().listen_port)){
+				return i;
+			}
 	}
 	return -1;
 };
@@ -380,9 +403,10 @@ Response::ImgInfo Response::getImageBinary(const char *path){
  */
 size_t Response::findBodyStart(){
 	size_t start = 0;
-	boost::string content(request->buffer);
-	start = content.find("filename=\"");
-	start = content.find("\r\n\r\n", start);
+	std::stringstream hold;
+	hold << request->buffer;
+	start = hold.str().find("filename=\"", 0);
+	start = hold.str().find("\r\n\r\n", start);
 	start += 4;
 	return start;
 };
@@ -484,6 +508,7 @@ bool Response::fileExist(boost::string path){
 void Response::responseGet(){
 	body.clear();
 
+	// std::cout << "request get " << request->getUrl() << std::endl;
 	if (request->getCgiRequest()){
 		handleCgi();
 		return ;
@@ -492,6 +517,7 @@ void Response::responseGet(){
 		request->getUrl().find("/image") != npos || \
 		request->getUrl().find("favicon.ico") != npos){
 			path = conf.root + request->getUrl();
+			std::cout <<"path "<< path << std::endl;
 			makeImage();
 	} else if (autoindex)
 		makeAutoindex(path);

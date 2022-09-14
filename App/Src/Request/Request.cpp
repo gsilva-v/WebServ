@@ -15,16 +15,18 @@ Request::~Request(){};
  * @param request The request string
  * @param buf The buffer that contains the request.
  */
-Request::Request(boost::string &request, char *buf,  SocketVector &server)
+Request:: Request(boost::string &request, char *buf,  SocketVector &server)
 : cgiRequest(false), isCgiUpload(false), servers(server) {
 	memcpy(buffer, buf, sizeof(buffer));
 	stringVector content = request.split("\r\n");
-	std::cout << "Request" << std::endl;
-	std::cout << content[0] << std::endl;
+	// std::cout << "Request" << std::endl;
+	// std::cout << request << std::endl;
+	// std::cout << content[0]<< std::endl;
 
 	if (content.empty()){
 		throw std::runtime_error("Empty Request");
 	}
+	// std::cout << buffer << std::endl;
 	RequestInfo(content);
 
 };
@@ -63,8 +65,7 @@ void Request::RequestInfo(stringVector &content){
 	start = content.begin();
 	end = content.end();
 	for (; start != end; start++){
-		if (start->find("GET") != npos || \
-		start->find("POST") != npos || \
+		if (start->find("GET") != npos || start->find("POST") != npos || \
 		start->find("DELETE") != npos){
 			ParseFirstLine(start);
 		} else if (start->find("Host:") != npos) {
@@ -91,18 +92,19 @@ void Request::RequestInfo(stringVector &content){
 			char_set = start->split(",");
 		} else if (start->find("Content-Type:") != npos) {
 			contentType.clear();
-			contentType.assign(start->erase(0, 15));
-			if (contentType.find("multipart/form-data") != npos)
+			contentType.assign(*start, 14, npos);
+			if (contentType.find("multipart/form-data") != npos){
 				isCgiUpload = true;
+			}
 		} else if (start->find("Content-Length:") != npos) {
 			contentLength = atoi (start->split(":")[1].c_str());
 		} else if (start->find("Connection:") != npos) {
 			(start->find("keep-alive") != npos) ? connection = true : connection = false;
-		} else if (start->find("----:") != npos) {
+		} else if (start->find("----") != npos) {
 			for (;start != end;start++){
 				body.append(*start);
 				body.append("\r\n");
-				if (start->find("Content-Type") != npos)
+				if (start->find("Content-Type: ") != npos)
 					body.append("\r\n");
 			}
 			start--;
@@ -152,8 +154,9 @@ void Request::ParseFirstLine(stringVector::iterator &line){
 				method = "DELETE";
 			else
 				return ;
-		} else if (start->at(0) == '/')
+		} else if (start->at(0) == '/'){
 			url = *start;
+		}
 		else if (start->find("HTTP/1.1") == npos)
 			return ;
 		else 
@@ -211,7 +214,7 @@ void Request::cgiEnvGet(stringVector::iterator &begin){
 	tmp = begin->split("/");
 	scriptName = tmp[1].erase(tmp[1].find("?"), tmp[1].length());
 	scriptType = findScriptType(*begin);
-	std::cout << "Request script type " << scriptType << std::endl;
+	// std::cout << "Request script type " << scriptType << std::endl;
 };
 
 // Accessors

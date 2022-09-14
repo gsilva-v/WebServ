@@ -113,11 +113,52 @@ void Server::handleClient(std::vector<pollfd>::iterator &it){
 			return ;
 		}
 		if (it->fd == sender_fd){
+			// std::cout << "buffer " << buffer << std::endl;
 			sendResponse(receive_buffer, sender_fd, buffer);
 			bzero(buffer, sizeof(buffer));
 			receive_buffer.clear();
 		}
 	}
+	// sender_fd = it->fd;
+
+    // char buffer[4096];
+    // bzero(buffer, sizeof(buffer));
+
+    // bytes = recv(it->fd, buffer, 4096, 0);
+
+    // switch (bytes) {
+
+    //     case -1: {
+    //         perror("recv");
+    //         closeSocket(it);
+    //         break;
+    //     }
+
+    //     case 0: {
+    //         closeSocket(it);
+    //         break;
+    //     }
+
+    //     default: {
+    //         for (int i = 0; i < bytes; i++)
+    //             receive_buffer.push_back(buffer[i]);
+
+       
+
+    //         if (tooLarge) {
+    //             receive_buffer = "";
+    //             if (bytes != 4096)
+    //                 tooLarge = false;
+    //             return;
+    //         }
+
+    //         if (it->fd == sender_fd) {
+    //             sendResponse(receive_buffer, sender_fd, buffer);
+    //             bzero(buffer, sizeof(buffer));
+    //             receive_buffer.clear();
+    //         }
+    //     }
+    // }
 };
 
 void Server::closeSocket(std::vector<pollfd>::iterator &it){
@@ -136,16 +177,17 @@ void Server::sendResponse(boost::string &received, int sender_fd, char *buf){
 	if (isChunked == false){
 		boost::string header = resp.getHeader();
 		boost::string body = resp.getBody();
+		// size_t max_send = 0;
+		// max_send = resp.getBodySize() + resp.getHeaderSize() + 1;
+		boost::string buffer;
+		// std::cout <<"max_send "<< resp.getBodySize() + resp.getHeaderSize() + 1 << std::endl;
+		buffer = (header + body);
+		// memcpy(buffer, header.data(), header.length());
+		// memcpy(buffer + header.length(), body.data(), body.length());
 
-		size_t max_send = resp.getBodySize() + resp.getHeaderSize() + 1;
-		char *buffer = new char[max_send];
-		bzero(buffer, max_send);
-		memcpy(buffer, header.data(), header.length());
-		memcpy(buffer + header.length(), body.data(), body.length());
-
-		if (send(sender_fd, buffer, max_send, 0) == -1)
+		if (send(sender_fd, buffer.c_str(), buffer.length() + 1, 0) == -1)
 			std::cout << "error sending response" << std::endl;
-		delete[] buffer;
+		// delete[] buffer;
 		bin_boundary = "";
 		status_code = "200";
 	}
