@@ -8,11 +8,22 @@ CGI::CGI(const CGI &rhs){
 
 CGI::~CGI(){};
 
-
+/**
+ * The assignment operator is a member function that takes a reference to a constant object of the same
+ * type as the object on which it is called. It returns a reference to the object on which it is called
+ * 
+ * @return A reference to the object that called the function.
+ */
 CGI & CGI::operator=(CGI const &rhs){
 	if(this != &rhs){
-		
-}
+		request = rhs.request;
+		fd[0] = rhs.fd[0];
+		fd[1] = rhs.fd[1];
+		url = rhs.url;
+		body = rhs.body;
+		output = rhs.output;
+		envVar = rhs.envVar;
+	}
 	return *this;
 };
 
@@ -46,12 +57,18 @@ CGI::CGI(Request *_request, server_info &server)
 	len << _request->getBody().length();
     envVar.push_back("CONTENT_LENGTH=" + len.str());
 	execCGI(server);
-}
+};
 
+/**
+ * It creates a pipe, forks a child process, executes the script, waits for the child process to
+ * finish, reads the output from the child process, closes the pipe and frees the memory allocated for
+ * the arguments and environment variables
+ * 
+ * @param server the server_info struct that contains the information about the server
+ */
 void CGI::execCGI(server_info &server){
 	char **args = setExecArgs(server);
 	char **envp = convToCharPtr();
-
 	createPipe();
 	boost::string body = request->getBody();
 	if (request->getMethod() == "POST")
@@ -86,11 +103,13 @@ char **CGI::setExecArgs(server_info & server){
 	args[0] = new char[len + 1];
 	strcpy(args[0], temp.c_str());
 	len = request->getScriptPath().length();
-	args[1] = new char[len + 1];
-	strcpy(args[1], request->getScriptPath().c_str());
+	std::cout << request->getRoot() + request->getScriptPath() << std::endl;
+	boost::string path = request->getRoot() + request->getScriptPath();
+	args[1] = new char[path.length() + 1];
+	strcpy(args[1], path.c_str());
 	args[2] = NULL;
 	return args;
-}
+};
 
 /**
  * It finds the script type of the request and returns the corresponding interpreter.
@@ -99,16 +118,16 @@ char **CGI::setExecArgs(server_info & server){
  * 
  * @return The return value is the value of the key that is being searched for.
  */
-boost::string CGI::findScriptType(server_info & server){
+boost::string& CGI::findScriptType(server_info & server){
 	mapSS::iterator it;
-	
 	for (size_t i  = 0; i < server.locations.size(); i++){
-		it = server.locations.at(i).cgi_ext.find(request->getScriptType());
-		if (it->first != "")
+		it = server.locations[i].cgi_ext.find(request->getScriptType());
+		if (it->first != ""){
 			break;
+		}
 	}
 	return it->second;
-}
+};
 
 /**
  * It converts the envVar vector into a char **
@@ -125,8 +144,11 @@ char **CGI::convToCharPtr(){
 	}
 	envp[i] = NULL;
 	return envp;
-}
+};
 
+/**
+ * It creates a pipe and duplicates the file descriptors for the pipe to the standard input and output
+ */
 void CGI::createPipe(){
 	if (pipe(fd) == -1)
 		std::cout << "Error in CGI - pipe" << std::endl;
@@ -135,27 +157,51 @@ void CGI::createPipe(){
 		dup2(fd[1], STDOUT_FILENO);
 	}
 
-}
+};
 
+/**
+ * The execScript function takes two arguments, the first is a pointer to an array of pointers to char,
+ * the second is a pointer to an array of pointers to char. The function then calls the execve
+ * function, passing it the first argument, the second argument, and the third argument. If the execve
+ * function returns -1, the function prints an error message
+ * 
+ * @param args The first argument is the name of the program to be executed. The second argument is the
+ * name of the program to be executed. The second argument is the name of the program to be executed.
+ * The second argument is the name of the program to be executed. The second argument is the name of
+ * the
+ * @param envp This is the environment variables that the script will be run with.
+ */
 void CGI::execScript(char **args, char **envp){
+	std::cerr << "args" << std::endl;
+	std::cerr << args[0] << std::endl;
+	std::cerr << args[1] << std::endl;
 	if (execve(args[0], args, envp) == -1)
 		perror("execve");
-}
+};
 
+/**
+ * It reads from the pipe and appends the data to the output string
+ */
 void CGI::readFromChild(){
-	 char buf[100000];
-	bzero(buf, 100000);
-	int bytes = read(fd[0], buf, 100000);
-	while (bytes){
-		if (bytes == -1){
-			std::cout << "Error in CGI - read" << std::endl;
-			break;
-		}
-		output.append(buf);
-		bytes = read(fd[0], buf, 100000);
-	}
-}
+	char buffer[100000];
+    bzero(buffer, 100000);
 
+    switch (read(fd[0], buffer, 100000)) {
+        case -1: {
+            perror("read");
+            break;
+        }
+        default:
+            output.append(buffer);
+	}
+};
+
+/**
+ * It frees the memory allocated for the arrays of strings that are passed to the CGI program
+ * 
+ * @param args The arguments to the CGI program.
+ * @param envp This is the environment variables. It's an array of strings.
+ */
 void CGI::freeArrays(char ** args, char ** envp){
 	for (int i = 0; i < 14; i++)
 		delete[] envp[i];
@@ -163,6 +209,4 @@ void CGI::freeArrays(char ** args, char ** envp){
 	for (int i = 0; i < 3; i++)
 		delete[] args[i];
 	delete[] args;
-
-
-}
+};

@@ -27,7 +27,7 @@ class CGI{
 		CGI(Request *_request, server_info &server);
 		void execCGI(server_info &server);
 		char **setExecArgs(server_info & server);
-		boost::string findScriptType(server_info & server);
+		boost::string &findScriptType(server_info & server);
 		char **convToCharPtr();
 		void createPipe();
 		void execScript(char **args, char **envp);

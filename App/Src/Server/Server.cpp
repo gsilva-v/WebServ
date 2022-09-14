@@ -129,7 +129,8 @@ void Server::closeSocket(std::vector<pollfd>::iterator &it){
 };
 
 void Server::sendResponse(boost::string &received, int sender_fd, char *buf){
-	Request req(received, buf);
+	SocketVector help = this->getSockVec();
+	Request req(received, buf, help);
 	Response resp(&req, this);
 
 	if (isChunked == false){

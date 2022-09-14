@@ -18,6 +18,5 @@ namespace boost{
 			string(std::string buf);
 			string();
 			string(const char * s);
-			template<typename T> static boost::string itoa(const T& num);
 	};
 };

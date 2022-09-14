@@ -2,6 +2,7 @@
 
 #include "../Boost/String.hpp"
 #include "../Config/Config.hpp"
+#include "../Socket/Socket.hpp"
 
 
 
@@ -10,6 +11,7 @@
 
 class Request{
 	private:
+		SocketVector servers;
 		boost::string scriptType;
 		boost::string method;
 		boost::string url;
@@ -27,6 +29,7 @@ class Request{
 		bool cgiRequest;
 		bool isCgiUpload;
 		size_t contentLength;
+		boost::string root;
 
 	public:
 		char buffer[4096];
@@ -35,7 +38,7 @@ class Request{
 		Request & operator=(Request const &rhs);
 		~Request();
 
-		Request(boost::string &request, char *buf);
+		Request(boost::string &request, char *buf, SocketVector &server);
 
 		void RequestInfo(stringVector &content);
 		void ParseFirstLine(stringVector::iterator &line);
@@ -62,5 +65,7 @@ class Request{
 		bool getCgiRequest() const;
 		bool getIsCgiUpload() const;
 		size_t getContentLength() const;
+		boost::string getRoot() const { return root; }
+
 };
 

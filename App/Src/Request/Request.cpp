@@ -15,12 +15,12 @@ Request::~Request(){};
  * @param request The request string
  * @param buf The buffer that contains the request.
  */
-Request::Request(boost::string &request, char *buf)
-: cgiRequest(false), isCgiUpload(false){
+Request::Request(boost::string &request, char *buf,  SocketVector &server)
+: cgiRequest(false), isCgiUpload(false), servers(server) {
 	memcpy(buffer, buf, sizeof(buffer));
 	stringVector content = request.split("\r\n");
 	std::cout << "Request" << std::endl;
-	std::cout << request << std::endl;
+	std::cout << content[0] << std::endl;
 
 	if (content.empty()){
 		throw std::runtime_error("Empty Request");
@@ -69,6 +69,16 @@ void Request::RequestInfo(stringVector &content){
 			ParseFirstLine(start);
 		} else if (start->find("Host:") != npos) {
 			host.assign(start->erase(0, 6));
+			for (size_t i = 0; i < servers.size(); i++) {
+				int port = atoi(host.split(":")[1].c_str());
+				if (host == servers.at(i).getHostName() || \
+					(host.find("localhost") != npos && \
+					servers.at(i).getHostName().find("127.0.0.1") != npos && \
+					port == servers.at(i).getServInfo().listen_port)){
+					root = servers.at(i).getServInfo().root;
+					break ;
+				}
+			}
 		} else if (start->find("User-Agent:") != npos) {
 			user_agent.assign(start->erase(0, 12));
 		} else if (start->find("Accept:") != npos) {
@@ -151,7 +161,6 @@ void Request::ParseFirstLine(stringVector::iterator &line){
 	}
 };
 
-
 /**
  * It returns the file extension of the script that the user is trying to run
  * 
@@ -177,8 +186,9 @@ boost::string Request::findScriptType(boost::string &line){
  * @param strVec The vector of strings that contains the request.
  */
 void Request::cgiEnvPost(stringVector::iterator &begin, stringVector &strVec){
-	scriptPath.append("./www");
+	scriptPath.append(root);
 	scriptPath.append(strVec[1]);
+	// std::cout << "scriptPath " << scriptPath << std::endl;
 	stringVector tmp = begin->split("/");
 	scriptName = tmp[1];
 	scriptType = findScriptType(*begin);
@@ -194,13 +204,14 @@ void Request::cgiEnvGet(stringVector::iterator &begin){
 	url = *begin;
 
 	stringVector tmp = begin->split("?");
-	scriptPath.append("./www");
+	scriptPath.append(root);
 	scriptPath.append(tmp[0]);
 	if (tmp.size() > 1)
 		QueryString = tmp[1];
 	tmp = begin->split("/");
 	scriptName = tmp[1].erase(tmp[1].find("?"), tmp[1].length());
 	scriptType = findScriptType(*begin);
+	std::cout << "Request script type " << scriptType << std::endl;
 };
 
 // Accessors

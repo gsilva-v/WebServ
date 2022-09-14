@@ -42,11 +42,13 @@ Response::Response(Request * req, Server *serv)
 // COlocar mensgem de erro
 		return ;
 	}
-	// std::cout << "Response" << std::endl;
-	// std::cout << header << std::endl;	
-	// std::cout << body.str() << std::endl;	
 };
 
+/**
+ * It handles the multipart/form-data request
+ * 
+ * @return the response of the request.
+ */
 void Response::responseMultipart(){
 	boost::string boundary("");
 	size_t start = 0, pos = 0;
@@ -144,7 +146,7 @@ boost::string Response::lookForRoot(locationVector& location){
 		}
 	}
 	return path;
-}
+};
 
 /**
  * It takes a locationVector, a stringVector, a size_t, and a bool, and returns a boost::string
@@ -179,8 +181,11 @@ boost::string Response::setPath(locationVector &location, stringVector &urlVec, 
 	autoindex = location.at(i).autoindex;
 	redirection = location.at(i).redirect;
 	return path;
-}
+};
 
+/**
+ * It deletes the file that was uploaded
+ */
 void Response::handleFile(){
 	std::ifstream infile(server->uploadPath().c_str());
 	if (infile.good()){
@@ -188,7 +193,7 @@ void Response::handleFile(){
 			std::cout << "nao apagou o arquivo???" << std::endl;
 		std::cout << "apagou o arquivo???" << std::endl;
 	}
-}
+};
 
 /**
  * It parses the request buffer and extracts the filename of the uploaded file
@@ -469,6 +474,13 @@ bool Response::fileExist(boost::string path){
 	return stat(path.c_str(), &s) == 0;
 }
 
+/**
+ * If the request is a CGI request, handle it; if the request is a request for a file, read the file
+ * and make the response; if the request is a request for a directory, make an autoindex; if the
+ * request is a request for a file that doesn't exist, make a 404 response
+ * 
+ * @return The response header and body.
+ */
 void Response::responseGet(){
 	body.clear();
 
@@ -492,6 +504,10 @@ void Response::responseGet(){
 	makeHeader(status_code);
 };
 
+/**
+ * It creates a CGI object, gets the output from the CGI object, sets the body to the output, sets the
+ * status code to 200, and makes the header.
+ */
 void Response::handleCgi(){
 	CGI cgi(request, conf);
 	body.clear();
@@ -501,6 +517,13 @@ void Response::handleCgi(){
 	makeHeader(status_code);
 };
 
+/**
+ * It reads the file at the given path and stores it in the body of the response
+ * 
+ * @param path the path to the file to be read
+ * 
+ * @return The response object is being returned.
+ */
 void Response::readHTML(boost::string path){
 	boost::string line;
 	std::fstream file;
@@ -517,6 +540,10 @@ void Response::readHTML(boost::string path){
 	bodySize = body.str().length();	
 };
 
+/**
+ * If the request is a multipart/form-data request, then call responseMultipart(), otherwise call
+ * handleCgi()
+ */
 void Response::responsePost(){
 	if(request->getContentType().find("multipart/form-data") != npos)
 		responseMultipart();
@@ -524,6 +551,9 @@ void Response::responsePost(){
 		handleCgi();
 };
 
+/**
+ * The function deletes the file at the path specified in the request
+ */
 void Response::responseDelete(){
 	deletePath(path);
 	status_code = "200";
@@ -542,13 +572,10 @@ void Response::deletePath(boost::string path){
 	boost::string line;
 
 	if (!dir){
-		
 		if (fileExist(path)){
 			unlink(path.c_str());
 			return ;
 		}
-
-
 		status_code = "404";
 		std::cout << "delete error" << std::endl;
 		return ;
