@@ -16,7 +16,7 @@ Request::~Request(){};
  * @param buf The buffer that contains the request.
  */
 Request:: Request(boost::string &request, char *buf,  SocketVector &server)
-: cgiRequest(false), isCgiUpload(false), servers(server) {
+:  servers(server), cgiRequest(false),  isCgiUpload(false) {
 	memcpy(buffer, buf, sizeof(buffer));
 	stringVector content = request.split("\r\n");
 	// std::cout << "Request" << std::endl;
@@ -205,7 +205,6 @@ void Request::cgiEnvPost(stringVector::iterator &begin, stringVector &strVec){
  */
 void Request::cgiEnvGet(stringVector::iterator &begin){
 	url = *begin;
-
 	stringVector tmp = begin->split("?");
 	scriptPath.append(root);
 	scriptPath.append(tmp[0]);
@@ -214,7 +213,6 @@ void Request::cgiEnvGet(stringVector::iterator &begin){
 	tmp = begin->split("/");
 	scriptName = tmp[1].erase(tmp[1].find("?"), tmp[1].length());
 	scriptType = findScriptType(*begin);
-	// std::cout << "Request script type " << scriptType << std::endl;
 };
 
 // Accessors

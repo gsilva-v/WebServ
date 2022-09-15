@@ -10,7 +10,20 @@ Response::~Response(){};
 
 Response & Response::operator=(Response const &rhs){
 	if(this != &rhs){
-		
+		autoindex = rhs.autoindex;
+		redirection = rhs.redirection;
+		cgiRequest = rhs.cgiRequest;
+		headerSize = rhs.headerSize;
+		bodySize = rhs.bodySize;
+		request = rhs.request;
+		path = rhs.path;
+		upload_dir = rhs.upload_dir;
+		header = rhs.header;
+		status_code = rhs.status_code;
+		server = rhs.server;
+		conf = rhs.conf;
+		status = rhs.status;
+		body << rhs.body;
 	}
 	return *this;
 };
@@ -59,20 +72,19 @@ void Response::responseMultipart(){
 		if (vec.empty())
 			break;
 		int port = atoi(vec[1].c_str());
-
 		if (host == server->sockVec.at(i).getHostName() || \
 			(host.find("localhost") != npos && \
 			server->sockVec.at(i).getHostName().find("127.0.0.1") != npos && \
 			port == server->sockVec.at(i).getServInfo().listen_port)){
-				for (size_t j = 0; j < server->sockVec.at(i).getServInfo().locations.size(); j++){
-					if (request->getUrl() == server->sockVec.at(i).getServInfo().locations.at(j).name){
-						upload_dir = server->sockVec.at(i).getServInfo().locations.at(j).upload_dir;
-						break;
-					}
+			for (size_t j = 0; j < server->sockVec.at(i).getServInfo().locations.size(); j++){
+				if (request->getUrl() == server->sockVec.at(i).getServInfo().locations.at(j).name){
+					upload_dir = server->sockVec.at(i).getServInfo().locations.at(j).upload_dir;
+					break;
 				}
-				break ;
 			}
+			break ;
 		}
+	}
 	boundary = request->getContentType();
 	size_t n = boundary.find("--");
 	boundary.erase(0, n);
@@ -231,14 +243,13 @@ void Response::setFileName(){
 					break;
 				}
 			}
-			struct stat s;
 			if (!folderExist(path))
 				mkdir(path.c_str(), ACCESSPERMS);
 			path.append(hold.str().substr(pos, start - pos));
 			server->setUploadPath(path);
 		}
 	}
-}
+};
 
 /**
  * It creates the header for the response
@@ -288,7 +299,7 @@ void Response::makeAutoindex(boost::string path){
 	dir = opendir(path.c_str());
 	if (!dir){
 		status_code = "404";
-		std::cout << path << std::endl;
+		errorBody(status_code);
 		std::cout << "Auto Index error" << std::endl;
 		return ;
 	}
@@ -296,8 +307,9 @@ void Response::makeAutoindex(boost::string path){
 	value.assign("<html>\n<head>\n<meta charset=\"utf-8\">\n\
 				<title>Directory Listing</title>\n</head>\n<body>\n<h1>" + path + \
 				"</h1>\n<ul>");
-	path.clear();
-	while ((dire = readdir(dir))){
+	size_t n = path.find("/upload");
+	path.erase(0, n);
+	while ((dire = readdir(dir)) != NULL){
 		value.append("<li><a href=\"");
 		value.append(path);
 		if (value.ends_with('/') == false)
@@ -329,13 +341,11 @@ void Response::errorBody(boost::string &code){
 	boost::string error_path;
 
 	if (conf.error_pages.empty()){
-		if ((i = findSocket())){
-			std::cout << i << std::endl;
+		if ((i = findSocket()))
 			error_path = server->sockVec.at(i).getServInfo().error_pages.at(code);
-		}
 	} else 
 		error_path = conf.error_pages.at(code);
-	if (request->getUrl().find("/image") != npos || request->getUrl().find("favicon.ico") != npos){
+	if (request->getUrl().find("favicon.ico") != npos){
 		path = conf.root + request->getUrl();
 		makeImage();
 	} else {
@@ -508,17 +518,22 @@ bool Response::fileExist(boost::string path){
 void Response::responseGet(){
 	body.clear();
 
-	// std::cout << "request get " << request->getUrl() << std::endl;
 	if (request->getCgiRequest()){
-		handleCgi();
+		if (!fileExist(conf.root + request->getScriptPath())){
+			status_code = "404";
+			makeHeader(status_code);
+		}
+		else
+			handleCgi();
 		return ;
 	}
 	if ((!folderExist(path) && request->getUrl().find("/upload") != npos) || \
-		request->getUrl().find("/image") != npos || \
 		request->getUrl().find("favicon.ico") != npos){
-			path = conf.root + request->getUrl();
-			std::cout <<"path "<< path << std::endl;
-			makeImage();
+			path = "./www" + request->getUrl();
+			if (!folderExist(path) && !fileExist(path))
+				status_code = "404";
+			else
+				makeImage();
 	} else if (autoindex)
 		makeAutoindex(path);
 	else if (redirection)
@@ -556,7 +571,6 @@ void Response::readHTML(boost::string path){
 	file.open(path.c_str(), std::ios::in);
 	if (!file.good()){
 		status_code = "404";
-
 		return ;
 	}
 	status_code = "200";
@@ -602,7 +616,8 @@ void Response::deletePath(boost::string path){
 			unlink(path.c_str());
 			return ;
 		}
-		status_code = "404";
+		status_code = "500";
+		errorBody(status_code);
 		std::cout << "delete error" << std::endl;
 		return ;
 	}

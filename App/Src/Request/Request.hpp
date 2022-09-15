@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __REQUEST_H__
+#define __REQUEST_H__
 
 #include "../Boost/String.hpp"
 #include "../Config/Config.hpp"
@@ -69,3 +70,5 @@ class Request{
 
 };
 
+
+#endif // __REQUEST_H__

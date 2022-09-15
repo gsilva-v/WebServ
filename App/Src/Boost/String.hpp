@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __STRING_H__
+#define __STRING_H__
 
 #include <string>
 #include <vector>
@@ -20,3 +21,5 @@ namespace boost{
 			string(const char * s);
 	};
 };
+
+#endif // __STRING_H__

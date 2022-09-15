@@ -36,6 +36,7 @@ class Server{
 		Server & operator=(Server const &rhs);
 		~Server();
 
+		void boot(SocketVector _sockVec);
 		pollfd addToPollfd(int newfd);
 		void run();
 		void handleEvents(std::vector<pollfd>::iterator &it, size_t index);

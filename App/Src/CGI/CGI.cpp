@@ -2,30 +2,7 @@
 
 CGI::CGI(){};
 
-CGI::CGI(const CGI &rhs){
-	*this = rhs;
-};
-
 CGI::~CGI(){};
-
-/**
- * The assignment operator is a member function that takes a reference to a constant object of the same
- * type as the object on which it is called. It returns a reference to the object on which it is called
- * 
- * @return A reference to the object that called the function.
- */
-CGI & CGI::operator=(CGI const &rhs){
-	if(this != &rhs){
-		request = rhs.request;
-		fd[0] = rhs.fd[0];
-		fd[1] = rhs.fd[1];
-		url = rhs.url;
-		body = rhs.body;
-		output = rhs.output;
-		envVar = rhs.envVar;
-	}
-	return *this;
-};
 
 /**
  * It sets up the environment variables for the CGI script to use
@@ -36,26 +13,26 @@ CGI & CGI::operator=(CGI const &rhs){
 CGI::CGI(Request *_request, server_info &server)
 : request(_request), url(_request->getUrl()), body(_request->getBody()) {
 	   envVar.push_back("SERVER_PROTOCOL=HTTP/1.1");
-    envVar.push_back("GATEWAY_INTERFACE=CGI/1.1");
-    envVar.push_back("SERVER_SOFTWARE=webserv");
-    envVar.push_back("REDIRECT_STATUS=200"); // used for PHP
-    envVar.push_back("SERVER_NAME=" + server.server_name);
+	envVar.push_back("GATEWAY_INTERFACE=CGI/1.1");
+	envVar.push_back("SERVER_SOFTWARE=webserv");
+	envVar.push_back("REDIRECT_STATUS=200"); // used for PHP
+	envVar.push_back("SERVER_NAME=" + server.server_name);
 	std::stringstream port;
 	port << server.listen_port;
-    envVar.push_back("SERVER_PORT=" + port.str());
-    envVar.push_back("REQUEST_METHOD=" + _request->getMethod());
-    envVar.push_back("PATH_INFO=" + _request->getScriptPath());
-    envVar.push_back("SCRIPT_NAME=" + _request->getScriptName());
-    envVar.push_back("QUERY_STRING=" + _request->getQueryString());
-    envVar.push_back("REMOTE_ADDR=" + server.host);
-    envVar.push_back("PATH_TRANSLATED=" + _request->getScriptPath());
-    if (_request->getMethod() == "POST")
-        envVar.push_back("CONTENT_TYPE=" + _request->getContentType());
-    else
-        envVar.push_back("CONTENT_TYPE=text/html");
+	envVar.push_back("SERVER_PORT=" + port.str());
+	envVar.push_back("REQUEST_METHOD=" + _request->getMethod());
+	envVar.push_back("PATH_INFO=" + _request->getScriptPath());
+	envVar.push_back("SCRIPT_NAME=" + _request->getScriptName());
+	envVar.push_back("QUERY_STRING=" + _request->getQueryString());
+	envVar.push_back("REMOTE_ADDR=" + server.host);
+	envVar.push_back("PATH_TRANSLATED=" + _request->getScriptPath());
+	if (_request->getMethod() == "POST") 
+		envVar.push_back("CONTENT_TYPE=" + _request->getContentType());
+	else 
+		envVar.push_back("CONTENT_TYPE=text/html");
 	std::stringstream len;
 	len << _request->getBody().length();
-    envVar.push_back("CONTENT_LENGTH=" + len.str());
+	envVar.push_back("CONTENT_LENGTH=" + len.str());
 	execCGI(server);
 };
 
@@ -99,11 +76,9 @@ char **CGI::setExecArgs(server_info & server){
 	char **args = new char *[3];
 	boost::string temp = findScriptType(server);
 	size_t len = temp.length();
-
 	args[0] = new char[len + 1];
 	strcpy(args[0], temp.c_str());
 	len = request->getScriptPath().length();
-	std::cout << request->getRoot() + request->getScriptPath() << std::endl;
 	boost::string path = request->getRoot() + request->getScriptPath();
 	args[1] = new char[path.length() + 1];
 	strcpy(args[1], path.c_str());
@@ -136,7 +111,6 @@ boost::string& CGI::findScriptType(server_info & server){
  */
 char **CGI::convToCharPtr(){
 	char ** envp = new char *[14 + 1];
-
 	int i = 0;
 	for(;i < 14; i++){
 		envp[i] = new char[envVar[i].size() + 1];
@@ -165,16 +139,12 @@ void CGI::createPipe(){
  * function, passing it the first argument, the second argument, and the third argument. If the execve
  * function returns -1, the function prints an error message
  * 
- * @param args The first argument is the name of the program to be executed. The second argument is the
- * name of the program to be executed. The second argument is the name of the program to be executed.
- * The second argument is the name of the program to be executed. The second argument is the name of
- * the
+ * @param args The first argument is where the language that will execute the program is. The second argument is the
+ * name of the program to be executed.
+ * 
  * @param envp This is the environment variables that the script will be run with.
  */
 void CGI::execScript(char **args, char **envp){
-	std::cerr << "args" << std::endl;
-	std::cerr << args[0] << std::endl;
-	std::cerr << args[1] << std::endl;
 	if (execve(args[0], args, envp) == -1)
 		perror("execve");
 };
@@ -184,15 +154,15 @@ void CGI::execScript(char **args, char **envp){
  */
 void CGI::readFromChild(){
 	char buffer[100000];
-    bzero(buffer, 100000);
+	bzero(buffer, 100000);
 
-    switch (read(fd[0], buffer, 100000)) {
-        case -1: {
-            perror("read");
-            break;
-        }
-        default:
-            output.append(buffer);
+	switch (read(fd[0], buffer, 100000)) {
+		case -1: {
+			perror("read");
+			break;
+		}
+		default:
+			output.append(buffer);
 	}
 };
 

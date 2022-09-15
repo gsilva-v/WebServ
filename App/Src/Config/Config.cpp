@@ -14,7 +14,7 @@ Config::Config(const std::string &file_path){
 
 Config & Config::operator=(Config const &rhs){
 	if(this != &rhs){
-		
+		servers_config = rhs.servers_config;
 	}
 	return *this;
 };
