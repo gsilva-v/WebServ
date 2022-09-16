@@ -70,7 +70,7 @@ class Response{
 		bool fileExist(boost::string path);
 		
 		// Searchs
-		int findSocket();
+		int findHost();
 		size_t findBodyStart();
 		size_t findBodyEnd(size_t start, boost::string boundary);
 		boost::string lookForRoot(locationVector& location);

@@ -58,92 +58,26 @@ Response::Response(Request * req, Server *serv)
 };
 
 /**
- * It handles the multipart/form-data request
- * 
- * @return the response of the request.
- */
-void Response::responseMultipart(){
-	boost::string boundary("");
-	size_t start = 0, pos = 0;
-
-	boost::string host = request->getHost();
-	for (size_t i = 0; i < server->sockVec.size(); i++) {
-		std::vector<boost::string> vec = host.split(":");
-		if (vec.empty())
-			break;
-		int port = atoi(vec[1].c_str());
-		if (host == server->sockVec.at(i).getHostName() || \
-			(host.find("localhost") != npos && \
-			server->sockVec.at(i).getHostName().find("127.0.0.1") != npos && \
-			port == server->sockVec.at(i).getServInfo().listen_port)){
-			for (size_t j = 0; j < server->sockVec.at(i).getServInfo().locations.size(); j++){
-				if (request->getUrl() == server->sockVec.at(i).getServInfo().locations.at(j).name){
-					upload_dir = server->sockVec.at(i).getServInfo().locations.at(j).upload_dir;
-					break;
-				}
-			}
-			break ;
-		}
-	}
-	boundary = request->getContentType();
-	size_t n = boundary.find("--");
-	boundary.erase(0, n);
-	boundary.insert(0, "--");
-	boundary.append("--");
-
-	if (server->getBinBoundary() == "")
-		server->setBinBoundary(boundary);
-	if (server->getIsChunked() == false){
-		if (conf.client_max_body_size < request->getContentLength()){
-			status_code = STATUS_TOO_LARGE;
-			makeHeader();
-			server->setTooLarge(true);
-			return ;
-		}
-		setFileName();
-		start = findBodyStart();
-		if (!folderExist(path)){
-			handleFile();
-		}
-		if (server->getBytes() == 4096)
-			server->setIsChunked(true);
-	}
-	pos = findBodyEnd(start, server->getBinBoundary());
-	writeToFile(start, pos);
-	if (server->getBytes() != 4096){
-		handleAutoindex("./www/upload");
-		makeHeader();
-		server->setIsChunked(false);
-	}
-};
-
-/**
  * It sets the configuration of the response
  * 
  * @return the root directory of the server.
  */
 void Response::setConfig(){
-	boost::string host = request->getHost();
-	stringVector hostVec = host.split(":");
-
-	if (hostVec.empty())
-		return ;
-	int port = atoi(hostVec[1].c_str());
-	
-	for (size_t i = 0; i < server->sockVec.size(); i++){
+	int i = findHost();
+	if (i != -1){
 		server_info tmp = server->sockVec.at(i).getServInfo();
-		if ((hostVec[0] == tmp.host || hostVec[0] == "localhost") && port == tmp.listen_port){
-			conf = tmp;
-			break ;
-		}
+		conf = tmp;
+	} else {
+		status_code = STATUS_SERVER_ERROR;
+		return ; 
 	}
 	if (lookForRoot(conf.locations) == ""){
-		int i = findSocket();
-		if(i >= 0){
+		i = findHost();
+		if(i != -1){
 			locationVector tmp_locations = server->sockVec.at(i).getServInfo().locations;
-			if (lookForRoot(tmp_locations) != ""){
+			if (lookForRoot(tmp_locations) != "")
 				conf = server->sockVec.at(i).getServInfo();
-			} else
+			else
 				status_code = STATUS_NOT_FOUND;
 		}
 	}
@@ -211,45 +145,6 @@ boost::string Response::setPath(locationVector &location, stringVector &urlVec, 
 	return path;
 };
 
-/**
- * It deletes the file that was uploaded
- */
-void Response::handleFile(){
-	std::ifstream infile(server->uploadPath().c_str());
-	if (infile.good()){
-		std::cout << "O arquivo já exite" << std::endl;
-		if (remove(server->uploadPath().c_str()) == -1)
-			std::cout << "nao foi possivel apagar o arquivo" << std::endl;
-		else
-			std::cout << "arquivo apagado com sucesso" << std::endl;
-	}
-};
-
-/**
- * It parses the request buffer and extracts the filename of the uploaded file
- */
-void Response::setFileName(){
-	size_t start = 0, pos = 0;
-	std::stringstream hold;
-	hold << request->buffer;
-	pos = hold.str().find("filename=\"", 0);
-	if (pos != npos){
-		pos += 10;
-		start = hold.str().find('"', pos);
-		if (start != npos){
-			for (size_t i = 0; i < conf.locations.size(); i++){
-				if (conf.locations.at(i).upload_dir != ""){
-					path.assign(conf.locations.at(i).upload_dir);
-					break;
-				}
-			}
-			if (!folderExist(path))
-				mkdir(path.c_str(), ACCESSPERMS);
-			path.append(hold.str().substr(pos, start - pos));
-			server->setUploadPath(path);
-		}
-	}
-};
 
 /**
  * It creates the header for the response
@@ -339,7 +234,7 @@ void Response::errorBody(){
 	boost::string error_path;
 
 	if (conf.error_pages.empty()){
-		if ((i = findSocket()))
+		if ((i = findHost()))
 			error_path = server->sockVec.at(i).getServInfo().error_pages.at(status_code);
 	} else 
 		error_path = conf.error_pages.at(status_code);
@@ -363,9 +258,9 @@ void Response::errorBody(){
  * 
  * @return The index of the socket in the vector of sockets.
  */
-int Response::findSocket(){
+int Response::findHost(){
+	boost::string host = request->getHost();
 	for (size_t i = 0; i < server->sockVec.size() ; i++){
-		boost::string host = request->getHost();
 		std::vector<boost::string> vec = host.split(":");
 		if (vec.empty())
 			return vec.size(); 
@@ -374,8 +269,8 @@ int Response::findSocket(){
 			(host.find("localhost") != npos && \
 			server->sockVec.at(i).getHostName().find("127.0.0.1") != npos && \
 			port == server->sockVec.at(i).getServInfo().listen_port)){
-				return i;
-			}
+			return i;
+		}
 	}
 	return -1;
 };
@@ -402,68 +297,6 @@ Response::ImgInfo Response::getImageBinary(const char *path){
 	f.read(imgInfo.first, imgInfo.second);
 	f.close();
 	return imgInfo;
-};
-
-/**
- * It finds the start of the body of the request
- * 
- * @return The start of the body of the request.
- */
-size_t Response::findBodyStart(){
-	size_t start = 0;
-	std::stringstream hold;
-	hold << request->buffer;
-	start = hold.str().find("filename=\"", 0);
-	start = hold.str().find("\r\n\r\n", start);
-	start += 4;
-	return start;
-};
-
-/**
- * It finds the end of the body
- * 
- * @param start The starting point of the search
- * @param boundary The boundary string that separates the body from the headers.
- * 
- * @return The size of the buffer.
- */
-size_t Response::findBodyEnd(size_t start, boost::string boundary){
-	char *ptr;
-	size_t max_length = 0;
-	while (start < sizeof(request->buffer)){
-		max_length = sizeof(request->buffer) - start;
-		ptr = (char*)memchr(request->buffer + start, '-', max_length);
-		if (!ptr || start > sizeof(request->buffer)){
-			start = server->getBytes();
-			return start;
-		}
-		start = ptr - request->buffer + 1;
-		if (memcmp(ptr, boundary.c_str(), boundary.size()) == 0)
-			break;
-	}
-	return start + 1;
-};
-
-/**
- * It writes the data from the buffer to the file
- * 
- * @param start the start of the file in the buffer
- * @param end the end of the file
- */
-void Response::writeToFile(size_t start , size_t end){
-	std::ofstream ofs(server->uploadPath().c_str() , std::ofstream::out | std::ofstream::app | std::ofstream::binary);
-	if (!ofs.good() || !ofs.is_open())
-		std::cout << "Error in file path out" << std::endl;	
-	const char * addr = &request->buffer[start];
-	size_t len = 0;
-	if (server->getBytes() != 4096)
-		len = end - 5 - start;
-	else 
-		len = end - start;
-	ofs.write(addr, len);
-	ofs.close();
-	if (!ofs.good())
-		std::cout << "Error writing in file" << std::endl;
 };
 
 /**
@@ -507,45 +340,6 @@ bool Response::fileExist(boost::string path){
 }
 
 /**
- * If the request is a CGI request, handle it; if the request is a request for a file, read the file
- * and make the response; if the request is a request for a directory, make an autoindex; if the
- * request is a request for a file that doesn't exist, make a 404 response
- * 
- * @return The response header and body.
- */
-void Response::responseGet(){
-	body.clear();
-	if (request->getCgiRequest()){
-		if (!fileExist(conf.root + request->getScriptPath())){
-			status_code = STATUS_NOT_FOUND;
-			makeHeader();
-		}
-		else
-			handleCgi();
-		return ;
-	}
-	if ((!folderExist(path) && request->getUrl().find("/upload") != npos) || \
-		request->getUrl().find("favicon.ico") != npos){
-			if (request->getUrl().find("favicon.ico") != npos)
-				path =  conf.root + request->getUrl();
-			else
-				path =  "./www" + request->getUrl();
-			if (!folderExist(path) && !fileExist(path))
-				status_code = STATUS_NOT_FOUND;
-			else
-				makeImage();
-	} else if (autoindex)
-		handleAutoindex(path);
-	else if (redirection)
-		status_code = STATUS_REDIRECT;
-	else
-		readHTML(path);
-	if (bodySize > conf.client_max_body_size)
-		status_code = STATUS_TOO_LARGE;
-	makeHeader();
-};
-
-/**
  * It creates a CGI object, gets the output from the CGI object, sets the body to the output, sets the
  * status code to 200, and makes the header.
  */
@@ -556,89 +350,4 @@ void Response::handleCgi(){
 	body << cgi.getOutput();
 	status_code = STATUS_OK;
 	makeHeader();
-};
-
-/**
- * It reads the file at the given path and stores it in the body of the response
- * 
- * @param path the path to the file to be read
- * 
- * @return The response object is being returned.
- */
-void Response::readHTML(boost::string path){
-	boost::string line;
-	std::fstream file;
-	file.open(path.c_str(), std::ios::in);
-	if (!file.good()){
-		status_code = STATUS_NOT_FOUND;
-		return ;
-	}
-	status_code = STATUS_OK;
-	while (getline(file, line))	{
-		body << line << '\n';		
-	}
-	bodySize = body.str().length();	
-};
-
-/**
- * If the request is a multipart/form-data request, then call responseMultipart(), otherwise call
- * handleCgi()
- */
-void Response::responsePost(){
-	if(request->getContentType().find("multipart/form-data") != npos)
-		responseMultipart();
-	else
-		handleCgi();
-};
-
-/**
- * The function deletes the file at the path specified in the request
- */
-void Response::responseDelete(){
-	deletePath(path);
-	status_code = STATUS_OK;
-	makeHeader();
-};
-
-/**
- * It deletes a directory and all its contents
- * 
- * @param path the path of the folder to be deleted
- */
-void Response::deletePath(boost::string path){
-	DIR *dir = opendir(path.c_str());
-	dirent * dire;
-	int ret = 0;
-	boost::string line;
-
-	if (!dir){
-		if (fileExist(path)){
-			unlink(path.c_str());
-			return ;
-		}
-		status_code = STATUS_SERVER_ERROR;
-		errorBody();
-		std::cout << "delete error" << std::endl;
-		return ;
-	}
-	while ((dire = readdir(dir)) != NULL) {
-		line.clear();
-		line = path;
-		if (!line.ends_with('/'))
-			line.append("/");
-		line.append(dire->d_name);
-		if (line.ends_with('.'))
-			continue;
-		if (dire->d_type == DT_DIR)
-			line.append("/");
-		
-		if (folderExist(line)){
-			deletePath(line);
-			ret = rmdir(line.c_str());
-		} else 
-			ret = unlink(line.c_str());
-		if (ret < 0)
-			std::cout << "Delete error" << std::endl;
-	}
-	closedir(dir);	
 };

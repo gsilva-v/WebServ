@@ -1,7 +1,7 @@
 NAME = WebServ
 CC = c++
 INCLUDE = -I ./App/Include/
-CXXFLAGS = -std=c++98 -Wall -Werror -Wextra -g $(INCLUDE)
+CXXFLAGS = -std=c++98 -g $(INCLUDE)
 
 PATH_SRCS = ./App/Src/
 PATH_BOOST = $(PATH_SRCS)Boost/
@@ -20,6 +20,9 @@ SRCS =	$(PATH_SRCS)main.cpp \
 		$(PATH_BOOST)String.cpp \
 		$(PATH_REQ)Request.cpp \
 		$(PATH_RES)Response.cpp \
+		$(PATH_RES)Get.cpp \
+		$(PATH_RES)Post.cpp \
+		$(PATH_RES)Delete.cpp \
 		$(PATH_CGI)CGI.cpp \
 		$(PATH_SOCK)Socket.cpp 
 
