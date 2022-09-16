@@ -46,9 +46,8 @@ class Response{
 		void responseDelete();
 
 		// Makers
-		void makeHeader(boost::string code);
+		void makeHeader();
 		void makeImage();
-		void makeAutoindex(boost::string path);
 
 		// For chunked Response
 		void responseMultipart();
@@ -61,6 +60,7 @@ class Response{
 		boost::string setPath(locationVector &location, stringVector &urlVec, size_t i, bool var);
 
 		// Handlers
+		void handleAutoindex(boost::string path);
 		void handleFile();
 		void handleCgi();
 
@@ -76,7 +76,7 @@ class Response{
 		boost::string lookForRoot(locationVector& location);
 
 		// Utilities
-		void errorBody(boost::string & code);
+		void errorBody();
 		void writeToFile(size_t start , size_t end);
 		void readHTML(boost::string path);
 		void deletePath(boost::string path);

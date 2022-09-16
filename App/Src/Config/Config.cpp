@@ -19,6 +19,7 @@ Config & Config::operator=(Config const &rhs){
 	return *this;
 };
 
+
 /**
  * It opens a file, reads it line by line, formats each line, and then parses the formatted lines
  * 

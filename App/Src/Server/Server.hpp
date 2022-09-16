@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "../Defines/Defines.hpp"
 #include "../Socket/Socket.hpp"
 #include "../Request/Request.hpp"
 
@@ -31,39 +32,34 @@ class Server{
 		boost::string upload_path;
 	public:
 		Server(SocketVector sockVec);
+		Server(boost::string config_file);
 		Server();
-		Server(const  Server &rhs);
+		Server(const Server &rhs);
 		Server & operator=(Server const &rhs);
 		~Server();
 
 		void boot(SocketVector _sockVec);
-		pollfd addToPollfd(int newfd);
 		void run();
-		void handleEvents(std::vector<pollfd>::iterator &it, size_t index);
-		void handleClient(std::vector<pollfd>::iterator &it);
+		static bool dupBind(SocketVector &sockVec, int size, const server_info & info);
+		pollfd addToPollfd(int newfd);
 		void closeSocket(std::vector<pollfd>::iterator &it);
 		void sendResponse(boost::string &received, int sender_fd, char *buf);
+		void handleEvents(std::vector<pollfd>::iterator &it, size_t index);
+		void handleClient(std::vector<pollfd>::iterator &it);
 
+		// Accessors
 		boost::string statusCode() const { return status_code; }
 		bool getIsChunked() const { return isChunked; }
 		void setIsChunked(bool isChunked_) { isChunked = isChunked_; }
-
 		boost::string getBinBoundary() const { return bin_boundary; }
 		void setBinBoundary(const boost::string &binBoundary) { bin_boundary = binBoundary; }
-
 		bool getTooLarge() const { return tooLarge; }
 		void setTooLarge(bool tooLarge_) { tooLarge = tooLarge_; }
-
 		int getBytes() const { return bytes; }
 		void setBytes(int bytes_) { bytes = bytes_; }
-
 		SocketVector getSockVec() const { return sockVec; }
-
 		boost::string uploadPath() const { return upload_path; }
 		void setUploadPath(const boost::string &uploadPath) { upload_path = uploadPath; }
-
-
 };
-
 
 #endif // __SERVER_H__

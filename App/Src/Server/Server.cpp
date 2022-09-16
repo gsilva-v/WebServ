@@ -7,6 +7,19 @@ Server::Server(SocketVector _sockVec){
 	boot(_sockVec);
 };
 
+Server::Server(boost::string config_file){
+	Config conf(config_file);
+	SocketVector _sockVec;
+	for (int i = 0; i < conf.getServerSize(); i++){
+		bool canBind = true;
+		server_info serv_info = conf.getServerByIndex(i);
+		if (dupBind(_sockVec, _sockVec.size(), serv_info))
+			canBind = false;
+		Socket socket(serv_info, canBind);
+		_sockVec.push_back(socket);
+	}
+	boot(_sockVec);
+};
 Server::~Server(){};
 
 /**
@@ -16,9 +29,9 @@ Server::~Server(){};
  */
 void Server::boot(SocketVector _sockVec){
 	client_fd = 0;
-	status_code = "200";
-	sockVec = _sockVec;
+	status_code = STATUS_OK;
 	isChunked = false;
+	sockVec = _sockVec;
 	tooLarge = false;
 	for (size_t i = 0 ; i < sockVec.size(); i++){
 		pollfd new_fd = addToPollfd(sockVec.at(i).getFd());
@@ -27,6 +40,26 @@ void Server::boot(SocketVector _sockVec){
 	}
 	run();
 };
+
+/**
+ * It checks if the port number of the server is already in use
+ * 
+ * @param sockVec a vector of sockets
+ * @param size the number of sockets in the vector
+ * @param info the server_info struct that contains the information about the server
+ * 
+ * @return A boolean value.
+ */
+bool Server::dupBind(SocketVector &sockVec, int size, const server_info & info){
+	if (size == 0)
+		return false;
+	for (int i = 0; i < size; i++){
+		if (sockVec[i].getServInfo().listen_port == info.listen_port)
+			return true;
+	}
+	return false;
+};
+
 
 /**
  * It creates a new pollfd struct and returns it.
@@ -54,9 +87,9 @@ void Server::run(){
 	while (true) {
 		int ret = 0;
 		if ((ret = poll(&(pfds.front()), pfds.size(), 10000)) <= 0){
-			(ret == -1) ? status_code = "500" : status_code = "408";
+			(ret == -1) ? status_code = STATUS_SERVER_ERROR : status_code = STATUS_TIMEOUT;
 		}
-		if (status_code == "500")
+		if (status_code == STATUS_SERVER_ERROR)
 			std::cout << "Internal server Error [500]" << std::endl;
 		for (std::vector<pollfd>::iterator it = pfds.begin(); it != pfds.end(); it++ ){
 			if (it->revents & POLLIN){
@@ -142,8 +175,7 @@ void Server::closeSocket(std::vector<pollfd>::iterator &it){
 	close(it->fd);
 	pfds.erase(it);
 	it = pfds.begin();
-
-	status_code = "200";
+	status_code = STATUS_OK;
 };
 
 /**
@@ -166,6 +198,6 @@ void Server::sendResponse(boost::string &received, int sender_fd, char *buf){
 		if (send(sender_fd, buffer.c_str(), buffer.length() + 1, 0) == -1)
 			std::cout << "error sending response" << std::endl;
 		bin_boundary = "";
-		status_code = "200";
+		status_code = STATUS_OK;
 	}
 };

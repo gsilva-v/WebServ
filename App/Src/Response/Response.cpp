@@ -95,8 +95,8 @@ void Response::responseMultipart(){
 		server->setBinBoundary(boundary);
 	if (server->getIsChunked() == false){
 		if (conf.client_max_body_size < request->getContentLength()){
-			status_code = "413";
-			makeHeader(status_code);
+			status_code = STATUS_TOO_LARGE;
+			makeHeader();
 			server->setTooLarge(true);
 			return ;
 		}
@@ -111,8 +111,8 @@ void Response::responseMultipart(){
 	pos = findBodyEnd(start, server->getBinBoundary());
 	writeToFile(start, pos);
 	if (server->getBytes() != 4096){
-		makeAutoindex("./www/upload");
-		makeHeader(status_code);
+		handleAutoindex("./www/upload");
+		makeHeader();
 		server->setIsChunked(false);
 	}
 };
@@ -144,7 +144,7 @@ void Response::setConfig(){
 			if (lookForRoot(tmp_locations) != ""){
 				conf = server->sockVec.at(i).getServInfo();
 			} else
-				status_code = "404";
+				status_code = STATUS_NOT_FOUND;
 		}
 	}
 };
@@ -256,14 +256,14 @@ void Response::setFileName(){
  * 
  * @param code The HTTP status code.
  */
-void Response::makeHeader(boost::string code){
-	mapIterator it = status.code.find(code);
+void Response::makeHeader(){
+	mapIterator it = status.code.find(status_code);
 	std::stringstream stream_header;
-	if (code != "200" && code != "301"){
-		errorBody(code);
+	if (status_code != STATUS_OK && status_code != STATUS_REDIRECT){
+		errorBody();
 	}
 	stream_header << "HTTP/1.1 " << it->first << " " << it->second << "\r\nContent-Length: " << bodySize;
-	if (code == "301")
+	if (status_code == STATUS_REDIRECT)
 		stream_header << "\r\nLocation: " + path;
 	stream_header << "\r\n\r\n";
 	headerSize = stream_header.str().length();
@@ -280,7 +280,7 @@ void Response::makeImage(){
 	body.clear();
 	body.write(img.first, img.second);
 	bodySize = img.second;
-	status_code = "200";
+	status_code = STATUS_OK;
 	delete[] img.first;
 };
 
@@ -291,24 +291,22 @@ void Response::makeImage(){
  * 
  * @return A string containing the response header.
  */
-void Response::makeAutoindex(boost::string path){
+void Response::handleAutoindex(boost::string path){
 	DIR *dir;
 	dirent *dire;
 	boost::string line, value;
 
 	dir = opendir(path.c_str());
 	if (!dir){
-		status_code = "404";
-		errorBody(status_code);
+		status_code = STATUS_NOT_FOUND;
+		errorBody();
 		std::cout << "Auto Index error" << std::endl;
 		return ;
 	}
-	status_code = "200";
-	value.assign("<html>\n<head>\n<meta charset=\"utf-8\">\n\
-				<title>Directory Listing</title>\n</head>\n<body>\n<h1>" + path + \
-				"</h1>\n<ul>");
-	size_t n = path.find("/upload");
-	path.erase(0, n);
+	status_code = STATUS_OK;
+	value.assign(HTML_HEADER);
+	value.append("<h1>" + path + "</h1>\n<ul>");
+	path.erase(0, path.find("/upload"));
 	while ((dire = readdir(dir)) != NULL){
 		value.append("<li><a href=\"");
 		value.append(path);
@@ -334,7 +332,7 @@ void Response::makeAutoindex(boost::string path){
  * 
  * @param code the error code
  */
-void Response::errorBody(boost::string &code){
+void Response::errorBody(){
 	boost::string line;
 	std::fstream file;
 	int i = 0;
@@ -342,9 +340,9 @@ void Response::errorBody(boost::string &code){
 
 	if (conf.error_pages.empty()){
 		if ((i = findSocket()))
-			error_path = server->sockVec.at(i).getServInfo().error_pages.at(code);
+			error_path = server->sockVec.at(i).getServInfo().error_pages.at(status_code);
 	} else 
-		error_path = conf.error_pages.at(code);
+		error_path = conf.error_pages.at(status_code);
 	if (request->getUrl().find("favicon.ico") != npos){
 		path = conf.root + request->getUrl();
 		makeImage();
@@ -352,7 +350,7 @@ void Response::errorBody(boost::string &code){
 		body.clear();
 		file.open(error_path.c_str(), std::ios::in);
 		if (!file.good()){
-			status_code = "404";
+			status_code = STATUS_NOT_FOUND;
 		}
 		while (getline(file, line))
 			body << line << '\n';
@@ -394,7 +392,7 @@ Response::ImgInfo Response::getImageBinary(const char *path){
 	std::ifstream f(path, std::ios::in | std::ios::binary | std::ios::ate);
 
 	if (!f.is_open()){
-		status_code = "400";
+		status_code = STATUS_BAD_REQUEST;
 		imgInfo.first = NULL;
 		return imgInfo;
 	}
@@ -517,11 +515,10 @@ bool Response::fileExist(boost::string path){
  */
 void Response::responseGet(){
 	body.clear();
-
 	if (request->getCgiRequest()){
 		if (!fileExist(conf.root + request->getScriptPath())){
-			status_code = "404";
-			makeHeader(status_code);
+			status_code = STATUS_NOT_FOUND;
+			makeHeader();
 		}
 		else
 			handleCgi();
@@ -529,20 +526,23 @@ void Response::responseGet(){
 	}
 	if ((!folderExist(path) && request->getUrl().find("/upload") != npos) || \
 		request->getUrl().find("favicon.ico") != npos){
-			path = "./www" + request->getUrl();
+			if (request->getUrl().find("favicon.ico") != npos)
+				path =  conf.root + request->getUrl();
+			else
+				path =  "./www" + request->getUrl();
 			if (!folderExist(path) && !fileExist(path))
-				status_code = "404";
+				status_code = STATUS_NOT_FOUND;
 			else
 				makeImage();
 	} else if (autoindex)
-		makeAutoindex(path);
+		handleAutoindex(path);
 	else if (redirection)
-		status_code = "301";
+		status_code = STATUS_REDIRECT;
 	else
 		readHTML(path);
 	if (bodySize > conf.client_max_body_size)
-		status_code = "413";
-	makeHeader(status_code);
+		status_code = STATUS_TOO_LARGE;
+	makeHeader();
 };
 
 /**
@@ -554,8 +554,8 @@ void Response::handleCgi(){
 	body.clear();
 	bodySize = cgi.getOutput().length();
 	body << cgi.getOutput();
-	status_code = "200";
-	makeHeader(status_code);
+	status_code = STATUS_OK;
+	makeHeader();
 };
 
 /**
@@ -570,10 +570,10 @@ void Response::readHTML(boost::string path){
 	std::fstream file;
 	file.open(path.c_str(), std::ios::in);
 	if (!file.good()){
-		status_code = "404";
+		status_code = STATUS_NOT_FOUND;
 		return ;
 	}
-	status_code = "200";
+	status_code = STATUS_OK;
 	while (getline(file, line))	{
 		body << line << '\n';		
 	}
@@ -596,8 +596,8 @@ void Response::responsePost(){
  */
 void Response::responseDelete(){
 	deletePath(path);
-	status_code = "200";
-	makeHeader(status_code);
+	status_code = STATUS_OK;
+	makeHeader();
 };
 
 /**
@@ -616,8 +616,8 @@ void Response::deletePath(boost::string path){
 			unlink(path.c_str());
 			return ;
 		}
-		status_code = "500";
-		errorBody(status_code);
+		status_code = STATUS_SERVER_ERROR;
+		errorBody();
 		std::cout << "delete error" << std::endl;
 		return ;
 	}
