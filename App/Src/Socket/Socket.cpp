@@ -21,11 +21,9 @@ Socket::Socket(server_info &_serv_info, bool &_canBind)
         throw std::runtime_error("Invalid Socket");
 	}
 	fcntl(fd, F_SETFL, O_NONBLOCK);
-	int yes = 1;
-
-	// Makes the port reusable if a socket lingers in the Kernel
-    // Gets rid of the "Address already in use" message
-	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes))){
+	int optval = 1;
+	
+	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval))){
 		throw std::runtime_error("Cannot set socket option");
 	}
 	bzero(&addr, sizeof(addr));

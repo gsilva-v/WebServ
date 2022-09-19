@@ -1,7 +1,7 @@
 NAME = WebServ
 CC = c++
 INCLUDE = -I ./App/Include/
-CXXFLAGS = -std=c++98 -g $(INCLUDE)
+CXXFLAGS = -std=c++98 -Wall -Werror -Wextra -g $(INCLUDE)
 
 PATH_SRCS = ./App/Src/
 PATH_BOOST = $(PATH_SRCS)Boost/

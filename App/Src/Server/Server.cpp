@@ -77,8 +77,8 @@ pollfd Server::addToPollfd(int newfd){
 };
 
 /**
- * The function runs a loop that polls the sockets in the pfds vector, and if there is an event on one
- * of the sockets, it calls the handleEvents or handleClient function depending on the socket
+ * The server listens on all sockets in the sockVec vector, and when a socket is ready to be read, it
+ * calls the handleEvents function to handle the event
  */
 void Server::run(){
 	for (size_t i = 0; i < sockVec.size(); i++){

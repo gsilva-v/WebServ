@@ -1,11 +1,8 @@
 #include "WebServ.hpp"
-#include "Server/Server.hpp"
-
 
 static void handle_signal(int signal){
 	exit(signal);
 }
-
 
 int main(int argc, char **argv){
 	signal(SIGINT, handle_signal);
@@ -18,6 +15,5 @@ int main(int argc, char **argv){
 		}
 	} else
 		std::cout << "Invalid arguments" << std::endl;
-
 	return 0;
 }

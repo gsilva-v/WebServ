@@ -105,6 +105,7 @@ boost::string Response::searchLocationFolder(locationVector& location){
 		if (!validFolderFile(path))
 			path = "";
 	}
+
 	return path;
 };
 
@@ -228,13 +229,21 @@ void Response::errorBody(){
 	boost::string line;
 	std::fstream file;
 	int i = 0;
-	boost::string error_path;
+	boost::string error_path = "";
 
 	if (conf.error_pages.empty()){
 		if ((i = findHost()))
-			error_path = server->sockVec.at(i).getServInfo().error_pages.at(status_code);
+		{
+			mapSS pages = server->sockVec.at(i).getServInfo().error_pages;
+			if (!pages.empty()) 
+				error_path = server->sockVec.at(i).getServInfo().error_pages.at(status_code);
+		}
 	} else 
 		error_path = conf.error_pages.at(status_code);
+
+	if (error_path == ""){
+		error_path = "./www/default_error_pages/500.html";
+	}
 	if (request->getUrl().find("favicon.ico") != npos){
 		path = conf.root + request->getUrl();
 		makeImage();
