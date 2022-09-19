@@ -9,29 +9,27 @@ Request::Request(const Request &rhs){
 Request::~Request(){};
 
 /**
- * It takes a string and a buffer, copies the buffer into the buffer member variable, splits the string
- * into a vector of strings, and then calls the RequestInfo function
+ * The constructor for the Request class takes a string, a buffer, and a SocketVector. 
+ * 
+ * The string is the request from the client. The buffer is the buffer that the request was read into.
+ * The SocketVector is a vector of sockets that the server is listening on. 
+ * 
+ * The constructor then splits the request into a vector of strings, and calls the parse function.
  * 
  * @param request The request string
  * @param buf The buffer that contains the request.
+ * @param server A vector of sockets that are connected to the server.
  */
 Request:: Request(boost::string &request, char *buf,  SocketVector &server)
 :  servers(server), cgiRequest(false),  isCgiUpload(false) {
 	memcpy(buffer, buf, sizeof(buffer));
 	stringVector content = request.split("\r\n");
-	// std::cout << "Request" << std::endl;
-	// std::cout << request << std::endl;
-	// std::cout << content[0]<< std::endl;
-
-	if (content.empty()){
+	if (content.empty())
 		throw std::runtime_error("Empty Request");
-	}
-	// std::cout << buffer << std::endl;
-	RequestInfo(content);
-
+	parse(content);
 };
 
-Request & Request::operator=(Request const &rhs){
+Request &Request::operator=(Request const &rhs){
 	if(this != &rhs){
 		scriptType = rhs.scriptType;
 		method = rhs.method;
@@ -54,19 +52,19 @@ Request & Request::operator=(Request const &rhs){
 	return *this;
 };
 
+
 /**
  * It parses the request header and stores the information in the class variables
  * 
  * @param content the request content
  */
-void Request::RequestInfo(stringVector &content){
+void Request::parse(stringVector &content){
 	stringVector::iterator start, end;
-	
 	start = content.begin();
 	end = content.end();
+	method.clear();
 	for (; start != end; start++){
-		if (start->find("GET") != npos || start->find("POST") != npos || \
-		start->find("DELETE") != npos){
+		if (has_method(*start)){
 			ParseFirstLine(start);
 		} else if (start->find("Host:") != npos) {
 			host.assign(start->erase(0, 6));
@@ -125,11 +123,9 @@ void Request::RequestInfo(stringVector &content){
 void Request::ParseFirstLine(stringVector::iterator &line){
 	stringVector strVec;
 	stringVector::iterator start, end;
-
 	strVec = line->split(" ");
 	start = strVec.begin();
 	end = strVec.end();
-
 	for (; start != end; start++){
 		if (start->find("cgi-bin") != npos){
 			cgiRequest = true;
@@ -142,27 +138,29 @@ void Request::ParseFirstLine(stringVector::iterator &line){
 			}
 			cgiEnvPost(start, strVec);
 			continue ;
-		} else if (start->find("GET") != npos || \
-			start->find("POST") != npos || \
-			start->find("DELETE") != npos || \
-			start->find("OPTIONS") != npos ){
+		} else if (has_method(*start)){
 			if (start->find("GET") != npos)
 				method = "GET";
 			else if (start->find("POST") != npos)
 				method = "POST";
 			else if (start->find("DELETE") != npos)
 				method = "DELETE";
-			else
-				return ;
-		} else if (start->at(0) == '/'){
+		} else if (start->at(0) == '/')
 			url = *start;
-		}
 		else if (start->find("HTTP/1.1") == npos)
 			return ;
 		else 
 			return ;
 	}
 };
+
+bool Request::has_method(boost::string line){
+	if (line.find("GET") != npos || line.find("POST") != npos || line.find("DELETE") != npos)
+		return true;
+	return false;
+}
+
+
 
 /**
  * It returns the file extension of the script that the user is trying to run
@@ -176,8 +174,6 @@ boost::string Request::findScriptType(boost::string &line){
 		return ".py";
 	if (line.find(".pl") != npos)
 		return ".pl";
-	if (line.find(".php") != npos)
-		return ".php";
 	return "";
 };
 
@@ -191,7 +187,6 @@ boost::string Request::findScriptType(boost::string &line){
 void Request::cgiEnvPost(stringVector::iterator &begin, stringVector &strVec){
 	scriptPath.append(root);
 	scriptPath.append(strVec[1]);
-	// std::cout << "scriptPath " << scriptPath << std::endl;
 	stringVector tmp = begin->split("/");
 	scriptName = tmp[1];
 	scriptType = findScriptType(*begin);

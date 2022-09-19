@@ -43,7 +43,7 @@ Response::Response(Request * req, Server *serv)
 		return ;
 	}
 	setConfig();
-	path = lookForRoot(conf.locations);
+	path = searchLocationFolder(conf.locations);
 	boost::string method = req->getMethod();
 	if (method.find("GET") != npos)
 		responseGet();
@@ -51,8 +51,8 @@ Response::Response(Request * req, Server *serv)
 		responsePost();
 	else if (method.find("DELETE") != npos)
 		responseDelete();
-	else if (method.find("GET") == npos || method.find("POST") == npos || method.find("DELETE") == npos){
-// COlocar mensgem de erro
+	else {
+		std::cout << "Request Error: Invalid Method!" << std::endl;
 		return ;
 	}
 };
@@ -71,11 +71,11 @@ void Response::setConfig(){
 		status_code = STATUS_SERVER_ERROR;
 		return ; 
 	}
-	if (lookForRoot(conf.locations) == ""){
+	if (searchLocationFolder(conf.locations) == ""){
 		i = findHost();
 		if(i != -1){
 			locationVector tmp_locations = server->sockVec.at(i).getServInfo().locations;
-			if (lookForRoot(tmp_locations) != "")
+			if (searchLocationFolder(tmp_locations) != "")
 				conf = server->sockVec.at(i).getServInfo();
 			else
 				status_code = STATUS_NOT_FOUND;
@@ -90,23 +90,20 @@ void Response::setConfig(){
  * 
  * @return A string
  */
-boost::string Response::lookForRoot(locationVector& location){
+boost::string Response::searchLocationFolder(locationVector& location){
 	boost::string path = "";
 	stringVector urlVec = request->getUrl().split("/");
 	for (size_t i = 0; i < location.size() && path == ""; i++){
-		if (!urlVec.empty() && location.at(i).name == "/" + urlVec[0]){
+		if (!urlVec.empty() && location.at(i).name == "/" + urlVec[0])
 			path = setPath(location, urlVec, i, false);
-		}
-		if (location.at(i).name == "/"){
+		if (location.at(i).name == "/")
 			path = setPath(location, urlVec, i, true);
-		}
 		if (request->getUrl() == location.at(i).name && location.at(i).redirect){
 			path = location.at(i).redirect_path;
 			break ;
 		}
-		if (!validFolderFile(path)){
+		if (!validFolderFile(path))
 			path = "";
-		}
 	}
 	return path;
 };

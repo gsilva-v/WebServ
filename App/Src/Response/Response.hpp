@@ -73,7 +73,7 @@ class Response{
 		int findHost();
 		size_t findBodyStart();
 		size_t findBodyEnd(size_t start, boost::string boundary);
-		boost::string lookForRoot(locationVector& location);
+		boost::string searchLocationFolder(locationVector& location);
 
 		// Utilities
 		void errorBody();

@@ -41,12 +41,12 @@ class Request{
 
 		Request(boost::string &request, char *buf, SocketVector &server);
 
-		void RequestInfo(stringVector &content);
+		void parse(stringVector &content);
 		void ParseFirstLine(stringVector::iterator &line);
 		void cgiEnvGet(stringVector::iterator &begin);
 		void cgiEnvPost(stringVector::iterator &begin, stringVector &strVec);
 		boost::string findScriptType(boost::string &line);
-
+		static bool has_method(boost::string line);
 
 // Accessors
 		boost::string getScriptType() const;
