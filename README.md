@@ -28,7 +28,55 @@ Um exemplo de como criar um arquivo de configuração valido esta aqui(colocar o
 ## O funcionamento
 O servidor primeiro é configurado com base em um arquivo `.conf`, que tem o ip, porta e as rotas que aquele endereço tem acesso dentro dos arquivos do servidor. Nesse arquivo também contém as paginas de erro, a raiz do site e o tamanho maximo do body size que o cliente pode enviar. No mesmo arquivo de configuração pode existir mais de uma configuração para sites, a única observação quanto a isso é garantir que as portas usadas entre eles são diferentes.
 
+Após lido o arquivo de configuração, caso nao tenha nenhum erro, é criado os sockets, que são por onde cliente e servidor irao se comunicar. Durante a criação dos sockets, é verificado se as portas configuradas para cada url está disponivel para o Bind(), que pode estar sendo usada em algum outro processo. 
+Com essas verificações feitas, os sites ficam disponiveis para os clientes, aguardando que alguma conexão ocorra.
 
-# links
-oq é http https://rockcontent.com/br/blog/http/
+Quando alguma conexão ocorre, o servidor aceita a conexão e gera um fd para o client, logo após, verifica oq foi pedido, se oq foi pedido é acessavel dentro do sistema, e com isso, monta a resposta que sera enviada ao cliente.
+
+O servidor pode receber requisições do tipo GET, POST e DELETE.
+
+### GET:
+- Uma simples solicitação de uma página estática, um arquivo, uma lista do que tem no diretório, etc.
+
+### POST:
+- Pode ser usado para subir um arquivo ao servidor, o que irá resultar numa requisição multipart. Uma explicação melhor sobre o funcionamento do multipart se encontra [aqui](https://pt.stackoverflow.com/questions/418026/multipart-formdata-é-uma-estrutura-de-dados).
+
+### DELETE:
+- ira deletar um arquivo, caso permitido pelas configurações. Esse, por enquanto, só é possivel via Postman, ThunderClient ou algo do tipo.
+
+#
+# Como criar um arquivo de configuração
+Assim como no nginx, as configurações sao ordenadas por blocos, mais especificamente bloco de `server{}` e de `location {}`
+### server {} :
+
+Esse bloco contém informações basicados dos servidor como:
+- 	listen: Ip e Porta que irão ser liberados para o acesso dos clientes.
+-	server_name: um apelido para o url do site.
+-	client_max_body_size: tamanho maximo de uma requisição.
+-	root: raiz do site que será hospedado.
+-	error_page: a configuração das paginas de erro. Deve ter o valor e o caminho do arquivo.
+-	location{}: os blocos de rotas daquele site.
+
+Exemplo:
+
+![img_server_block_example](Readme_images/server_block_example.png)
+#
+### location /$rota {} :
+
+Esse bloco contém a configuração das rotas, e pode conter itens como:
+-	$rota: o caminho que será acessado.
+-	root: a raiz para aquele diretório, pode ser diferente do root do server.
+-	cgi_ext: libera a execução de uma cgi, deve ter o tipo da cgi e o programa que deve executar.
+-	autoindex: faz uma listagem do diretorio caso seja enviado com a opção ``on``. Por padrão, está com `off`.
+-	upload_dir: o diretorio que serão armazenados os arquivos que o cliente queira subir.
+-	allowed_methods: os metodos permitidos naquela location.
+-	return: lidará com redirecionamentos. Deve conter o código desejado e a url de destino.
+
+Exemplo:
+
+![img_location_block_example](Readme_images/location_clock_example.png)
+	
+#
+Um detalhe importante é: todas as linhas devem terminar com `;`, caso alguma linha esteja inválida, o sistema irá recomendar que conserte, e nao irá iniciar até que o erro seja resolvido.
+
 
