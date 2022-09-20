@@ -91,4 +91,10 @@ namespace boost {
 			return false;
 		return this->at(this->size() - 1) == c ? true : false;
 	};
+
+	bool string::is_blank(){
+		boost::string aux = *this;
+		aux.trim("\t\r \n");
+		return aux.empty();
+	};
 };

@@ -19,6 +19,7 @@ namespace boost{
 			string(std::string buf);
 			string();
 			string(const char * s);
+			bool is_blank();
 	};
 };
 

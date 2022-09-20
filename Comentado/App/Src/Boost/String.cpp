@@ -91,4 +91,15 @@ namespace boost {
 			return false;
 		return this->at(this->size() - 1) == c ? true : false;
 	};
+
+/**
+ * It returns true if the string is blank
+ * 
+ * @return A boolean value.
+ */
+	bool string::is_blank(){
+		boost::string aux = *this;
+		aux.trim("\t\r \n");
+		return aux.empty();
+	};
 };

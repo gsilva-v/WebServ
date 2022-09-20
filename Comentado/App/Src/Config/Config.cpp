@@ -52,7 +52,7 @@ boost::string Config::format_line(boost::string& line, int& line_num){
     if (line.find(";") == std::string::npos){
 		if ((line.find("server") == std::string::npos && 
 			line.find("location") == std::string::npos && line.find("}") == std::string::npos) &&
-			line != "") {
+			!line.is_blank()) {
 			std::stringstream p_str;
 			p_str << line_num;
 			throw std::runtime_error("[PARSE ERROR] Missing `;' on line: " + p_str.str() + "\n");
