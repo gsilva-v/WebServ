@@ -229,8 +229,13 @@ void Config::fillServerFields(stringVector block, server_info& serv_info){
 		if (block.size() == 2){
 			stringVector tmp = block[1].split(":");
 			for (size_t i = 0; i < tmp.size(); i++){
-				if (tmp[i].size() > 5)
-					serv_info.host = tmp[i].trim_right(";");
+				if (tmp[i].size() > 5){
+					tmp[i].trim_right(";");
+					if (tmp[i].find("localhost") != std::string::npos)
+						serv_info.host = "127.0.0.1";
+					else
+						serv_info.host = tmp[i].trim_right(";");
+				}
 				else
 					serv_info.listen_port = atoi(tmp[i].trim_right(";").c_str());
 			}
